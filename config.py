@@ -119,3 +119,4 @@ MAZE_CYCLES = 300  # treasure grabs per maze before finishing it (max 300)
 STUCK_LIMIT = 40   # give up on a big crop after this many rounds
 SNAKE_SHORTCUT_UNTIL = 0.5   # snake cuts corners until it fills this much of the farm
 REPLAN_EVERY = 5   # rounds between planner decisions (planning takes ~a second)
+PUMPKIN_ROUND_SECONDS = 20  # each pumpkin round runs this long (no waiting on slow blocks)

@@ -1,6 +1,6 @@
 # ===== jobs: what each drone does, and running drones together =====
 
-from config import PUMPKIN, CACTUS, SUN, POLY_MODES
+from config import PUMPKIN, CACTUS, SUN, POLY_MODES, PUMPKIN_ROUND_SECONDS
 from util import drones, goto
 from crops import tile, poly_tile
 
@@ -161,10 +161,10 @@ def harvest_block(x0, y0):
 		if col < BLOCK - 1:
 			move(East)
 
-def do_block(x0, y0):
+def do_block(x0, y0, deadline):
 	goto(x0, y0)
 	stale = 0     # sweeps where everything was grown but not one pumpkin
-	while True:
+	while get_time() < deadline:
 		# sweep the block in a zig-zag, replanting anything dead or missing
 		ready = True
 		for col in range(BLOCK):
@@ -194,29 +194,40 @@ def do_block(x0, y0):
 				return
 		goto(x0, y0)
 
-def pumpkin_job(unused, i, k):
+def pumpkin_job(deadline, i, k):
+	# Everyone works until the shared game clock passes the deadline, so
+	# nobody waits around for an unlucky block. Unfinished blocks simply
+	# carry on next round (the pumpkins are still in the ground).
 	n = get_world_size()
 	per = n // BLOCK
 	blocks = per * per
 	if i < blocks:
-		b = i
-		while b < blocks:
-			do_block((b % per) * BLOCK, (b // per) * BLOCK)
-			b += k
+		while get_time() < deadline:
+			b = i
+			while b < blocks and get_time() < deadline:
+				do_block((b % per) * BLOCK, (b // per) * BLOCK, deadline)
+				b += k
 		return True
-	# spare drones: the leftover strip along the top and right edges
+	# spare drones: keep looping over the leftover strip along the top and
+	# right edges
 	spares = k - blocks
 	j = i - blocks
 	edge = per * BLOCK
+	mine = []
 	count = 0
 	for x in range(n):
 		for y in range(n):
 			if x >= edge or y >= edge:
 				if count % spares == j:
-					goto(x, y)
-					if tile(PUMPKIN) and can_harvest():
-						harvest()
+					mine.append((x, y))
 				count += 1
+	while get_time() < deadline and len(mine) > 0:
+		for p in mine:
+			if get_time() >= deadline:
+				break
+			goto(p[0], p[1])
+			if tile(PUMPKIN):
+				harvest()
 	return True
 
 
@@ -332,7 +343,7 @@ def field_round(mode, wants):
 		return True
 
 	if mode == PUMPKIN and get_world_size() >= BLOCK:
-		fork(pumpkin_job, 0)   # every block harvested once
+		fork(pumpkin_job, get_time() + PUMPKIN_ROUND_SECONDS)
 		return True
 
 	ok = fork(field_job, mode)
