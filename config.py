@@ -132,5 +132,6 @@ PUMPKIN_GAP = 1    # grass strip between blocks: every block merges into a full 
 PUMPKIN_WATER = True  # water pumpkins when planting (8x faster growth, but costs a tick-heavy action per tile)
 PUMPKIN_BLOCK = 6  # block width. 6 is the smallest that pays 6 per tile (tested: 7 ties, 8 and 10 are ~20% worse)
 PUMPKIN_PAIRS = True  # two drones share each block when there are enough drones
-PUMPKIN_LOOP = True  # pairs walk a closed loop round the block, half a lap apart (needs an even PUMPKIN_BLOCK and a gap; 6x6: ~24M/min)
+PUMPKIN_LOOP = False  # drones walk a closed loop round the block, half a lap apart (needs an even PUMPKIN_BLOCK and a gap; 6x6: ~24M/min)
+PUMPKIN_PAIR2 = True  # (when PUMPKIN_LOOP is off) pairs use the tuned half-block worker (sim: ~3% faster than the loop)
 STATS_EVERY = 20   # print a stats summary every this many rounds

@@ -1,7 +1,8 @@
 # ===== jobs: what each drone does, and running drones together =====
 
-from config import PUMPKIN, CACTUS, SUN, POLY_MODES, PUMPKIN_ROUND_SECONDS, PUMPKIN_PATIENCE, PUMPKIN_GAP, PUMPKIN_PAIRS, PUMPKIN_BLOCK, PUMPKIN_LOOP
+from config import PUMPKIN, CACTUS, SUN, POLY_MODES, PUMPKIN_ROUND_SECONDS, PUMPKIN_PATIENCE, PUMPKIN_GAP, PUMPKIN_PAIRS, PUMPKIN_BLOCK, PUMPKIN_LOOP, PUMPKIN_PAIR2
 from util import drones, goto, goto_near
+PAIR_ORDER = 1     # pair_block revisit order: 1 = nearest first, 0 = as planted
 from crops import tile, poly_tile
 
 
@@ -274,6 +275,80 @@ def do_block(x0, y0, deadline, patience, cols, tm):
 			return "unfinished"
 	return "pieces"
 
+def pair_block(x0, y0, deadline, cols, tm, goal):
+	# One drone's half of a block shared with a partner (to-do style, tuned):
+	#  - never harvests on the planting sweep (keeps last round's progress)
+	#  - revisits the to-do list nearest-first, reversing direction each round
+	#  - checks for the merge on its OWN outer column: (edge, bottom) and
+	#    (edge, top) are 5 apart, and only a full 6-tall (so 6x6) giant can
+	#    cover both, so no walking over to the partner's side
+	t0 = get_time()
+	goto_near(x0 + cols[0], y0)
+	todo = []
+	for c in range(len(cols)):
+		for s in range(BLOCK):
+			if not tile(PUMPKIN):
+				todo.append((get_pos_x(), get_pos_y()))
+			if s < BLOCK - 1:
+				if c % 2 == 0:
+					move(North)
+				else:
+					move(South)
+		if c < len(cols) - 1:
+			move(East)
+	t1 = get_time()
+	tm["t_plant"] += t1 - t0
+	backwards = PAIR_ORDER == 1
+	while len(todo) > 0:
+		if get_time() >= deadline:
+			tm["t_dead"] += get_time() - t1
+			return "unfinished"
+		left = []
+		n = len(todo)
+		for q in range(n):
+			p = todo[q]
+			if backwards:
+				p = todo[n - 1 - q]
+			step_to(p[0], p[1])
+			if get_entity_type() == Entities.Dead_Pumpkin:
+				tm["dead"] += 1
+			if not tile(PUMPKIN):
+				left.append(p)
+		todo = left
+		if PAIR_ORDER == 1:
+			backwards = True     # left is in visiting order: reversed = nearest first
+	tm["t_dead"] += get_time() - t1
+	ex = x0
+	if cols[0] > 0:
+		ex = x0 + BLOCK - 1
+	top = y0 + BLOCK - 1
+	near = y0
+	far = top
+	if get_pos_y() - y0 > top - get_pos_y():
+		near = top
+		far = y0
+	first = True
+	while True:
+		if not first:
+			help_partner(x0, y0, cols)
+			near = y0
+			far = top
+			if get_pos_y() - y0 > top - get_pos_y():
+				near = top
+				far = y0
+		first = False
+		step_to(ex, near)
+		a = measure()
+		step_to(ex, far)
+		b = measure()
+		if a == None or b == None:
+			return "partner"     # my (all alive) tiles were emptied: partner harvested
+		if a == b and can_harvest():
+			harvest()
+			return "merged"
+		if get_time() >= deadline or (goal > 0 and num_items(Items.Pumpkin) >= goal):
+			return "unfinished"
+
 def loop_cells(s):
 	# a closed loop through every tile of an s x s block (s even):
 	# up column 0, zig-zag columns 1..s-1 in rows 1..s-1, back along row 0
@@ -415,8 +490,13 @@ def pumpkin_job(arg, i, k):
 		else:
 			cols = columns(BLOCK // 2, BLOCK)
 		while get_time() < deadline:
+			if arg[4] > 0 and num_items(Items.Pumpkin) >= arg[4]:
+				break      # leaderboard goal reached
 			t = get_time()
-			counts[do_block((b % per) * span, (b // per) * span, deadline, patience, cols, tm)] += 1
+			if PUMPKIN_PAIR2:
+				counts[pair_block((b % per) * span, (b // per) * span, deadline, cols, tm, arg[4])] += 1
+			else:
+				counts[do_block((b % per) * span, (b // per) * span, deadline, patience, cols, tm)] += 1
 			tm["t_block"] += get_time() - t
 		for name in tm:
 			counts[name] = tm[name]

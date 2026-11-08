@@ -405,8 +405,58 @@ def lab_ops():
 	quick_print("OPS: ticks per second while moving:", (get_tick_count() - k) / (get_time() - t))
 
 
+# ---------- 8. water: how much per use, how fast it dries, growth speed ----------
+def wait_secs(s):
+	t = get_time()
+	while get_time() - t < s:
+		get_entity_type()
+
+def lab_water():
+	set_world_size(8)
+	# a) how much does one use add?
+	if get_ground_type() != Grounds.Soil:
+		till()
+	levels = [get_water()]
+	for i in range(5):
+		use_item(Items.Water)
+		levels.append(get_water())
+	quick_print("WATER: level before / after each of 5 uses:", levels)
+	# b) how fast does it dry out?
+	dry = []
+	for s in [0, 2, 5, 10, 20]:
+		dry.append(get_water())
+		if s < 20:
+			wait_secs(5)
+	quick_print("WATER: level every 5s after soaking:", dry)
+	# c) pumpkin grow time with 0..4 uses of water on dry soil (fresh tiles)
+	x = 1
+	for uses in range(5):
+		times = []
+		start_levels = []
+		for rep in range(4):
+			goto(x, rep + 2)
+			if get_ground_type() != Grounds.Soil:
+				till()
+			plant(Entities.Pumpkin)
+			for u in range(uses):
+				use_item(Items.Water)
+			start_levels.append(get_water())
+			times.append(wait_until_done()[0])
+		quick_print("WATER: uses", uses, "| level", start_levels, "| grow seconds", times)
+		x += 1
+	# d) what's the soil level on a tile right after a harvest + replant (as in the real job)?
+	goto(0, 0)
+	if get_ground_type() != Grounds.Soil:
+		till()
+	plant(Entities.Pumpkin)
+	use_item(Items.Water)
+	wait_until_done()
+	harvest()
+	quick_print("WATER: after one use, grow and harvest, the soil has", get_water())
+
+
 # ---------- run everything ----------
 # (earlier experiments already measured; uncomment to rerun)
 quick_print("===== LAB =====")
-lab_ops()
+lab_water()
 quick_print("===== LAB DONE =====")
