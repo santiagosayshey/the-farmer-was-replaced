@@ -1,6 +1,6 @@
 # ===== jobs: what each drone does, and running drones together =====
 
-from config import PUMPKIN, CACTUS, SUN, POLY_MODES, PUMPKIN_ROUND_SECONDS, PUMPKIN_PATIENCE, PUMPKIN_GAP, PUMPKIN_PAIRS
+from config import PUMPKIN, CACTUS, SUN, POLY_MODES, PUMPKIN_ROUND_SECONDS, PUMPKIN_PATIENCE, PUMPKIN_GAP, PUMPKIN_PAIRS, PUMPKIN_BLOCK
 from util import drones, goto
 from crops import tile, poly_tile
 
@@ -133,10 +133,18 @@ def sort_job(dir, i, k):
 
 # ---------- pumpkins in 6x6 blocks ----------
 # A 6x6 pumpkin already pays the most per tile (6), so instead of waiting
-# for the WHOLE farm to merge, each drone owns some 6x6 blocks, keeps them
-# replanted, and harvests each block the moment it has merged.
+# for the WHOLE farm to merge, each drone owns some blocks (PUMPKIN_BLOCK
+# wide, 6 or more), keeps them replanted, and harvests each block the
+# moment it has merged.
 
-BLOCK = 6
+BLOCK = PUMPKIN_BLOCK
+
+def columns(a, b):
+	# [a, a+1, ..., b-1]
+	out = []
+	for c in range(a, b):
+		out.append(c)
+	return out
 
 def merged_here_and(d):
 	# same "mysterious number" from measure() = same giant pumpkin
@@ -256,14 +264,15 @@ def pumpkin_job(arg, i, k):
 	per = (n + gap) // span
 	blocks = per * per
 	counts = {"merged": 0, "pieces": 0, "unfinished": 0, "strip": 0, "partner": 0}
-	# enough drones for two per block? then each takes half (3 columns)
+	# enough drones for two per block? then each takes half the columns
+	# (an odd width gives the second drone the extra column)
 	pairs = PUMPKIN_PAIRS and blocks > 0 and k >= 2 * blocks
 	if pairs and i < 2 * blocks:
 		b = i // 2
 		if i % 2 == 0:
-			cols = [0, 1, 2]
+			cols = columns(0, BLOCK // 2)
 		else:
-			cols = [3, 4, 5]
+			cols = columns(BLOCK // 2, BLOCK)
 		while get_time() < deadline:
 			counts[do_block((b % per) * span, (b // per) * span, deadline, patience, cols)] += 1
 		return counts
@@ -271,7 +280,7 @@ def pumpkin_job(arg, i, k):
 		while get_time() < deadline:
 			b = i
 			while b < blocks and get_time() < deadline:
-				counts[do_block((b % per) * span, (b // per) * span, deadline, patience, [0, 1, 2, 3, 4, 5])] += 1
+				counts[do_block((b % per) * span, (b // per) * span, deadline, patience, columns(0, BLOCK))] += 1
 				b += k
 		return counts
 	# spare drones: every tile that isn't inside a block

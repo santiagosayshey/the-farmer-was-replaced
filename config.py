@@ -130,5 +130,6 @@ PUMPKIN_ROUND_SECONDS = 60  # each pumpkin round runs this long (tested: 60s bea
 PUMPKIN_PATIENCE = 2  # extra sweeps to wait for a block to merge before taking the pieces
 PUMPKIN_GAP = 1    # grass strip between blocks: every block merges into a full 6x6 (gaps + pairs passed 20M/min)
 PUMPKIN_WATER = True  # water pumpkins when planting (8x faster growth, but costs a tick-heavy action per tile)
+PUMPKIN_BLOCK = 7  # block width. 6 is the smallest that pays 6 per tile; 7 + 1-tile gaps fills 31 of 32 (77% of the farm vs 56%)
 PUMPKIN_PAIRS = True  # two drones share each block (one half each) when there are enough drones
 STATS_EVERY = 20   # print a stats summary every this many rounds
