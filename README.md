@@ -14,6 +14,8 @@ Fully automated farm for *The Farmer Was Replaced*. Run `main`.
 | `status` | Status line in the output window + hat status lights |
 | `stats` | Times every job, counts gains and job-specific numbers, prints a summary every 20 rounds |
 | `bench` | Run one job on its own (or inside `simulate()`) and print its numbers |
+| `lab` | Experiments that measure the game's real rules (grow times, death rate, snake vs planted tiles) |
+| `lab_sim` | Runs `lab` inside `simulate()` so the real farm isn't touched |
 | `util` | `goto`, `water`, `drones` |
 
 ## Setup (Windows)
