@@ -25,7 +25,7 @@ def lb_dino():
 def snake_compare():
 	# one full snake per cut-off (different random apples each time, so
 	# only trust big differences)
-	for cut in [0.2, 0.3, 0.4, 0.5]:
+	for cut in [0.05, 0.1, 0.15, 0.2]:
 		b0 = num_items(Items.Bone)
 		t0 = get_time()
 		do_dino(cut)
