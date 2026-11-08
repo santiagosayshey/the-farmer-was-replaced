@@ -13,13 +13,19 @@ Fully automated farm for *The Farmer Was Replaced*. Press play on `main` to farm
 | `dino` | Dinosaur snake on a loop that covers every square, for bones |
 | `status` | Status line in the output window + hat status lights |
 | `stats` | Times every job, counts gains and job-specific numbers, prints a summary every 20 rounds |
-| `run` | Press play for everything except the farm: sandbox practice, leaderboard runs, benches (uncomment one line) |
-| `task` | What runs inside the sandbox / a leaderboard run; the job is `TASK` in `config` (never press play) |
+| `run` | Press play for everything except the farm: change the name in its last line (sandbox practice, experiments, benches, leaderboard runs) |
+| `task` | What runs inside the sandbox / a leaderboard run (never press play); leaderboards are recognised from their starting items, other jobs get their name from `run` |
 | `bench` | Tests one job on the real farm and prints its numbers (used from `run`) |
-| `lab` | Experiments that measure the game's real rules (run them via `TASK` + `practice()`) |
+| `lab` | Experiments that measure the game's real rules (run them from `run`, e.g. `go("lab_water")`) |
 | `util` | `goto`, `water`, `drones` |
 
 ## Setup (Windows)
 1. Save folder: `%USERPROFILE%\AppData\LocalLow\TheFarmerWasReplaced\TheFarmerWasReplaced\Saves\<your save>`
 2. Turn on **File Watcher** in the game settings so it reloads files changed outside the game.
 3. Pull updates with `git pull`.
+
+## Rules for adding things (so no new windows are ever needed)
+- Windows are fixed: every window is a module named after the window, and the game has no folders.
+- A new experiment = a function in `lab` + one line in `task.pick()`. A new real-farm test = a function in `bench` + one line in `run.go()`.
+- Use `import module` and `module.name`; startup code only in `main`, `run`, `task`.
+- `save.json`, `__builtins__.py` and `output.txt` belong to the game and are ignored by git.

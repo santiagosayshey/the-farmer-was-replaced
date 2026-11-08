@@ -1,2 +1,6 @@
 __pycache__/
 *.pyc
+# the game's own files (it writes these; not part of our code)
+save.json
+__builtins__.py
+output.txt

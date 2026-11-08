@@ -135,12 +135,3 @@ PUMPKIN_PAIRS = True  # two drones share each block when there are enough drones
 PUMPKIN_LOOP = False  # drones walk a closed loop round the block, half a lap apart (needs an even PUMPKIN_BLOCK and a gap; 6x6: ~24M/min)
 PUMPKIN_PAIR2 = True  # (when PUMPKIN_LOOP is off) pairs use the tuned half-block worker (sim: ~3% faster than the loop)
 STATS_EVERY = 20   # print a stats summary every this many rounds
-
-# ---------- the run / task windows ----------
-# Which job the sandbox (practice) or a leaderboard run (real) does, in task:
-#   "lb_pumpkins"   pumpkin leaderboard (200M pumpkins)
-#   "lb_dino"       dinosaur leaderboard (one full snake)
-#   "snake_compare" full snakes with different shortcut cut-offs
-#   "lab_water", "lab_ops", "lab_snake_cost", "lab_cure", "lab_speed", ...
-#                   any experiment in lab, by name
-TASK = "lb_dino"

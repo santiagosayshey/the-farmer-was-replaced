@@ -1,5 +1,5 @@
 # ===== lab: measure the game's real rules =====
-# These run INSIDE the sandbox: pick one with TASK in config and practice()
+# These run INSIDE the sandbox: go("lab_water") etc. in the run window
 # in the run window (set_world_size() would clear the real farm). Each experiment prints results
 # to the output window. Send the output back so the simulations can be
 # calibrated against the real game.
