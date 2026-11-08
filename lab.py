@@ -141,6 +141,39 @@ def lab_snake_plants():
 	quick_print("SNAKE: after stepping off, that tile holds:", get_entity_type())
 	change_hat(other_hat())
 
+	# c) grassland instead of bushes: grass regrows by itself, so if it
+	#    blocks apples, the ground type alone decides where apples can go.
+	#    Left half soil, right half grassland (grass grows back on its own).
+	bare_farm()
+	for x in range(4):
+		for y in range(4):
+			if get_pos_x() >= 2:
+				till()           # soil -> grassland
+			move(North)
+		move(East)
+	quick_print("SNAKE: right half is now", get_ground_type(), "...")
+	change_hat(Hats.Dinosaur_Hat)
+	on_soil = 0
+	on_grass = 0
+	i = 0
+	while i < 300:
+		if get_entity_type() == Entities.Apple:
+			a = measure()
+			if a != None:
+				if a[0] >= 2:
+					on_grass += 1
+				else:
+					on_soil += 1
+		if not move(loop[i % 8]):
+			break
+		i += 1
+	quick_print("SNAKE: next apple on soil half", on_soil, "times, on grassland half", on_grass, "times")
+	# can the snake walk over grass, and does grass come back behind the tail?
+	ok = move(East)
+	ok2 = move(East)
+	quick_print("SNAKE: walking onto grassland returned", ok, ok2, "| standing on:", get_entity_type())
+	change_hat(other_hat())
+
 
 # ---------- run everything ----------
 quick_print("===== LAB =====")
