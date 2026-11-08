@@ -63,7 +63,7 @@ def bench_maze():
 	stats.report()
 
 # ---- pick one, then press play on this window ----
-bench_pumpkin(3, 60, 2, 1)   # gaps + two drones per block (16 blocks x 2 = 32 drones)
+bench_pumpkin(2, 120, 2, 1)  # gaps + pairs, 2 rounds of 120s, no harvesting at round start
 # bench_pumpkin(3, 60, 2, 0)   # no gaps, one drone per block (25 blocks)
 # bench_crop(PUMPKIN, 3)
 # bench_crop(CACTUS, 1)

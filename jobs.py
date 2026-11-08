@@ -172,9 +172,12 @@ def step_to(x, y):
 	while get_pos_y() > y:
 		move(South)
 
-def do_block(x0, y0, deadline, patience, cols):
+def do_block(x0, y0, deadline, patience, cols, take_pieces):
 	# cols: which columns of the block are mine (all 6, or one half when two
 	# drones share a block)
+	# take_pieces: harvest grown pumpkins on the first sweep. Right without
+	# gaps (blocks end up in pieces); wrong with gaps, where a block cut off
+	# by the end of a round would have merged a few seconds later.
 	goto(x0 + cols[0], y0)
 	# 1. one zig-zag over my columns. Harvest anything that's grown (pieces
 	#    left over from last time), plant / replant everything, and write
@@ -183,7 +186,7 @@ def do_block(x0, y0, deadline, patience, cols):
 	todo = []
 	for c in range(len(cols)):
 		for s in range(BLOCK):
-			if get_entity_type() == Entities.Pumpkin and can_harvest():
+			if take_pieces and get_entity_type() == Entities.Pumpkin and can_harvest():
 				harvest()
 			if not tile(PUMPKIN):
 				todo.append((get_pos_x(), get_pos_y()))
@@ -265,13 +268,13 @@ def pumpkin_job(arg, i, k):
 		else:
 			cols = [3, 4, 5]
 		while get_time() < deadline:
-			counts[do_block((b % per) * span, (b // per) * span, deadline, patience, cols)] += 1
+			counts[do_block((b % per) * span, (b // per) * span, deadline, patience, cols, gap == 0)] += 1
 		return counts
 	if not pairs and i < blocks:
 		while get_time() < deadline:
 			b = i
 			while b < blocks and get_time() < deadline:
-				counts[do_block((b % per) * span, (b // per) * span, deadline, patience, [0, 1, 2, 3, 4, 5])] += 1
+				counts[do_block((b % per) * span, (b // per) * span, deadline, patience, [0, 1, 2, 3, 4, 5], gap == 0)] += 1
 				b += k
 		return counts
 	# spare drones: every tile that isn't inside a block
