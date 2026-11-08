@@ -180,6 +180,28 @@ def step_to(x, y):
 	while get_pos_y() > y:
 		move(South)
 
+def help_partner(x0, y0, cols):
+	# My half is done but the block hasn't merged: the partner is still
+	# waiting on dead pumpkins. Walk its columns, starting from the far side
+	# (so we work towards each other), and replant dead ones.
+	# Only dead ones: an empty tile may be one the partner hasn't planted
+	# yet, and a grown one would get harvested as a single piece.
+	other = []
+	if cols[0] == 0:
+		for c in range(BLOCK - 1, len(cols) - 1, -1):
+			other.append(c)
+	else:
+		for c in range(cols[0]):
+			other.append(c)
+	for k in range(len(other)):
+		for s in range(BLOCK):
+			y = y0 + s
+			if k % 2 == 1:
+				y = y0 + BLOCK - 1 - s
+			step_to(x0 + other[k], y)
+			if get_entity_type() == Entities.Dead_Pumpkin:
+				tile(PUMPKIN)
+
 def do_block(x0, y0, deadline, patience, cols):
 	# cols: which columns of the block are mine (all 6, or one half when two
 	# drones share a block)
@@ -225,6 +247,8 @@ def do_block(x0, y0, deadline, patience, cols):
 	if len(cols) < BLOCK:
 		tries = 100000
 	for attempt in range(tries):
+		if attempt > 0 and len(cols) < BLOCK:
+			help_partner(x0, y0, cols)
 		step_to(x0 + BLOCK - 1, y0)
 		a = measure()
 		for s in range(BLOCK - 1):
