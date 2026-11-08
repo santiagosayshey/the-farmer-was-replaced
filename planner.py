@@ -11,7 +11,7 @@
 #    behind something else, so it's skipped until the next successful unlock.
 
 from config import MAZE, FERT, DINO, CROP, MODE_FOR, MODE_ITEM, MODELED, TRACKED
-from config import DEFAULT_OWN, VALUE, UNLOCKS, FLUFF_MAX, FIELD_BUFFER, BIG_MODES
+from config import DEFAULT_OWN, VALUE, UNLOCKS, FLUFF_MAX, FIELD_BUFFER, BIG_MODES, GOALS, MANUAL
 from mazes import maze_cost
 from dino import apple_cost
 
@@ -172,7 +172,9 @@ def choose():
 				affordable = False
 			spend += cost[item] * base[item]
 		if affordable:
-			if (u in VALUE) or spend < FLUFF_MAX:
+			if u in MANUAL:
+				quick_print("Ready for you to buy:", u)
+			elif (u in VALUE) or (u in GOALS) or spend < FLUFF_MAX:
 				if unlock(u):
 					quick_print("Unlocked:", u)
 					unblock_all()

@@ -110,8 +110,15 @@ UNLOCKS = [
 	Unlocks.Megafarm, Unlocks.Operators, Unlocks.Plant, Unlocks.Polyculture,
 	Unlocks.Pumpkins, Unlocks.Senses, Unlocks.Simulation, Unlocks.Speed,
 	Unlocks.Sunflowers, Unlocks.Timing, Unlocks.Trees, Unlocks.Utilities,
-	Unlocks.Variables, Unlocks.Watering
+	Unlocks.Variables, Unlocks.Watering,
+	Unlocks.Leaderboard, Unlocks.Top_Hat, Unlocks.The_Farmers_Remains
 ]
+
+# late-game goals: always buy these as soon as we can afford them
+GOALS = [Unlocks.Leaderboard, Unlocks.Top_Hat]
+
+# farm toward these, but leave the button for you to press
+MANUAL = [Unlocks.The_Farmers_Remains]
 
 POWER_MIN = 1500   # top up sunflowers below this (16 drones burn it fast)
 FIELD_BUFFER = 1.5 # need this many fields' worth of seed cost before planting
