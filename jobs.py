@@ -326,9 +326,19 @@ def loop_block(x0, y0, deadline, start):
 	goto(x0 + cells[j][0], y0 + cells[j][1])
 	corner = {0: None, 5: None}
 	merged = 0
+	jumps = 0
 	while get_time() < deadline:
 		c = cells[j]
-		if get_entity_type() != Entities.Pumpkin:
+		e = get_entity_type()
+		if e == Entities.Pumpkin and not can_harvest():
+			# still growing = the partner planted it moments ago: I've caught
+			# up (bus bunching). Jump half a lap ahead to spread out again;
+			# the loop folds, so that's only a few tiles away.
+			j = (j + len(cells) // 2) % len(cells)
+			step_to(x0 + cells[j][0], y0 + cells[j][1])
+			jumps += 1
+			continue
+		if e != Entities.Pumpkin:
 			tile(PUMPKIN)
 		elif c[1] == 0 and (c[0] == 0 or c[0] == 5):
 			m = measure()
@@ -340,7 +350,7 @@ def loop_block(x0, y0, deadline, start):
 				corner[c[0]] = m
 		move(dirs[j])
 		j = (j + 1) % len(cells)
-	return merged
+	return [merged, jumps]
 
 def pumpkin_job(arg, i, k):
 	# Everyone works until the shared game clock passes the deadline, so
@@ -364,7 +374,9 @@ def pumpkin_job(arg, i, k):
 	pairs = PUMPKIN_PAIRS and blocks > 0 and k >= 2 * blocks
 	if pairs and i < 2 * blocks and PUMPKIN_LOOP and BLOCK == 6 and gap > 0:
 		b = i // 2
-		counts["merged"] += loop_block((b % per) * span, (b // per) * span, deadline, (i % 2) * 18)
+		r = loop_block((b % per) * span, (b // per) * span, deadline, (i % 2) * 18)
+		counts["merged"] += r[0]
+		counts["jumps"] = r[1]
 		return counts
 	if pairs and i < 2 * blocks:
 		b = i // 2
