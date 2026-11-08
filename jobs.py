@@ -1,6 +1,6 @@
 # ===== jobs: what each drone does, and running drones together =====
 
-from config import PUMPKIN, CACTUS, SUN, POLY_MODES, PUMPKIN_ROUND_SECONDS, PUMPKIN_PATIENCE, PUMPKIN_GAP
+from config import PUMPKIN, CACTUS, SUN, POLY_MODES, PUMPKIN_ROUND_SECONDS, PUMPKIN_PATIENCE, PUMPKIN_GAP, PUMPKIN_PAIRS
 from util import drones, goto
 from crops import tile, poly_tile
 
@@ -172,25 +172,27 @@ def step_to(x, y):
 	while get_pos_y() > y:
 		move(South)
 
-def do_block(x0, y0, deadline, patience):
-	goto(x0, y0)
-	# 1. one zig-zag over the whole block. Harvest anything that's grown
-	#    (pieces left over from last time), plant / replant everything, and
-	#    write down every tile that isn't ready yet (the to-do list).
+def do_block(x0, y0, deadline, patience, cols):
+	# cols: which columns of the block are mine (all 6, or one half when two
+	# drones share a block)
+	goto(x0 + cols[0], y0)
+	# 1. one zig-zag over my columns. Harvest anything that's grown (pieces
+	#    left over from last time), plant / replant everything, and write
+	#    down every tile that isn't ready yet (the to-do list).
 	#    Harvesting here means pieces never need a separate pass.
 	todo = []
-	for col in range(BLOCK):
+	for c in range(len(cols)):
 		for s in range(BLOCK):
 			if get_entity_type() == Entities.Pumpkin and can_harvest():
 				harvest()
 			if not tile(PUMPKIN):
 				todo.append((get_pos_x(), get_pos_y()))
 			if s < BLOCK - 1:
-				if col % 2 == 0:
+				if c % 2 == 0:
 					move(North)
 				else:
 					move(South)
-		if col < BLOCK - 1:
+		if c < len(cols) - 1:
 			move(East)
 
 	# 2. only revisit the to-do tiles (a grown, live pumpkin stays that way,
@@ -205,12 +207,35 @@ def do_block(x0, y0, deadline, patience):
 				left.append(p)
 		todo = left
 
-	# 3. all 36 grown and alive: is it one giant pumpkin? (bottom corners
-	#    have the same measure() number). If it stays in pieces, leave them:
-	#    the next zig-zag harvests them on its way past.
-	for attempt in range(patience + 1):
+	# 3. my tiles are all grown and alive: is the whole block one giant
+	#    pumpkin? (bottom corners have the same measure() number).
+	#    Sharing a block: keep waiting for the partner's half (with gaps,
+	#    blocks reliably merge), but if a corner is empty or dead, the
+	#    partner already harvested it: go back and replant.
+	#    Alone: if it stays in pieces, leave them for the next zig-zag.
+	tries = patience + 1
+	if len(cols) < BLOCK:
+		tries = 100000
+	for attempt in range(tries):
 		step_to(x0 + BLOCK - 1, y0)
-		if merged_here_and(West):
+		a = measure()
+		for s in range(BLOCK - 1):
+			move(West)
+		b = measure()
+		# a = bottom-right corner, b = bottom-left corner
+		mine = b
+		if cols[0] > 0:
+			mine = a
+		if len(cols) < BLOCK:
+			if mine == None:
+				return "partner"     # my half was emptied: partner harvested
+			if a == None or b == None:
+				if get_time() >= deadline:
+					return "unfinished"
+				continue             # partner's corner is dead/empty: wait
+		elif a == None or b == None:
+			return "partner"
+		if a == b and can_harvest():
 			harvest()     # the whole 6x6 giant: best case
 			return "merged"
 		if get_time() >= deadline:
@@ -230,17 +255,33 @@ def pumpkin_job(arg, i, k):
 	span = BLOCK + gap
 	per = (n + gap) // span
 	blocks = per * per
-	counts = {"merged": 0, "pieces": 0, "unfinished": 0, "strip": 0}
-	if i < blocks:
+	counts = {"merged": 0, "pieces": 0, "unfinished": 0, "strip": 0, "partner": 0}
+	# enough drones for two per block? then each takes half (3 columns)
+	pairs = PUMPKIN_PAIRS and blocks > 0 and k >= 2 * blocks
+	if pairs and i < 2 * blocks:
+		b = i // 2
+		if i % 2 == 0:
+			cols = [0, 1, 2]
+		else:
+			cols = [3, 4, 5]
+		while get_time() < deadline:
+			counts[do_block((b % per) * span, (b // per) * span, deadline, patience, cols)] += 1
+		return counts
+	if not pairs and i < blocks:
 		while get_time() < deadline:
 			b = i
 			while b < blocks and get_time() < deadline:
-				counts[do_block((b % per) * span, (b // per) * span, deadline, patience)] += 1
+				counts[do_block((b % per) * span, (b // per) * span, deadline, patience, [0, 1, 2, 3, 4, 5])] += 1
 				b += k
 		return counts
 	# spare drones: every tile that isn't inside a block
-	spares = k - blocks
-	j = i - blocks
+	busy = blocks
+	if pairs:
+		busy = 2 * blocks
+	spares = k - busy
+	if spares <= 0:
+		return counts
+	j = i - busy
 	mine = []
 	count = 0
 	for x in range(n):

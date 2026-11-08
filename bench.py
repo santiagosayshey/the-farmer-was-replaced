@@ -63,8 +63,8 @@ def bench_maze():
 	stats.report()
 
 # ---- pick one, then press play on this window ----
-bench_pumpkin(3, 60, 2, 0)   # new pumpkin code, full Power, no gaps
-# bench_pumpkin(3, 60, 2, 1)   # with 1-tile grass gaps between blocks
+bench_pumpkin(3, 60, 2, 1)   # gaps + two drones per block (16 blocks x 2 = 32 drones)
+# bench_pumpkin(3, 60, 2, 0)   # no gaps, one drone per block (25 blocks)
 # bench_crop(PUMPKIN, 3)
 # bench_crop(CACTUS, 1)
 # bench_snake()
