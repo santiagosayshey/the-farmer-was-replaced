@@ -455,8 +455,45 @@ def lab_water():
 	quick_print("WATER: after one use, grow and harvest, the soil has", get_water())
 
 
+# ---------- 9. snake: what does a move really cost as the tail grows? ----------
+def lab_snake_cost():
+	from dino import build_tables
+	set_world_size(32)
+	clear()
+	n = get_world_size()
+	follow = build_tables(n)[1]
+	change_hat(Hats.Dinosaur_Hat)
+	head = (0, 0)
+	length = 0
+	checks = [0, 1, 2, 5, 10, 20, 50, 100, 150, 200, 300, 400, 600, 800]
+	ci = 0
+	mticks = 0
+	mcount = 0
+	t0 = get_time()
+	while ci < len(checks):
+		eating = get_entity_type() == Entities.Apple
+		d = follow[head][0]
+		k = get_tick_count()
+		ok = move(d)
+		k = get_tick_count() - k
+		if not ok:
+			break
+		head = follow[head][1]
+		if eating:
+			length += 1
+		if length >= checks[ci]:
+			mticks += k
+			mcount += 1
+			if mcount == 10:
+				quick_print("SNAKE COST: tail", length, "| ticks per move", mticks / 10, "| game seconds so far", get_time() - t0)
+				ci += 1
+				mticks = 0
+				mcount = 0
+	change_hat(Hats.Straw_Hat)
+
+
 # ---------- run everything ----------
 # (earlier experiments already measured; uncomment to rerun)
 quick_print("===== LAB =====")
-lab_water()
+lab_snake_cost()
 quick_print("===== LAB DONE =====")
