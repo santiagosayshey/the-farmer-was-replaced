@@ -1,6 +1,6 @@
 # ===== jobs: what each drone does, and running drones together =====
 
-from config import PUMPKIN, CACTUS, SUN, POLY_MODES, PUMPKIN_ROUND_SECONDS, PUMPKIN_PATIENCE, PUMPKIN_GAP, PUMPKIN_PAIRS, PUMPKIN_BLOCK
+from config import PUMPKIN, CACTUS, SUN, POLY_MODES, PUMPKIN_ROUND_SECONDS, PUMPKIN_PATIENCE, PUMPKIN_GAP, PUMPKIN_PAIRS, PUMPKIN_BLOCK, PUMPKIN_LOOP
 from util import drones, goto
 from crops import tile, poly_tile
 
@@ -282,6 +282,66 @@ def do_block(x0, y0, deadline, patience, cols, tm):
 			return "unfinished"
 	return "pieces"
 
+def loop_cells():
+	# a closed loop through every tile of a 6x6 block:
+	# up column 0, zig-zag columns 1-5 in rows 1-5, back along row 0
+	cells = []
+	for y in range(6):
+		cells.append([0, y])
+	for c in range(1, 6):
+		if c % 2 == 1:
+			for y in range(5, 0, -1):
+				cells.append([c, y])
+		else:
+			for y in range(1, 6):
+				cells.append([c, y])
+	for x in range(5, 0, -1):
+		cells.append([x, 0])
+	return cells
+
+def loop_dirs(cells):
+	dirs = []
+	for j in range(len(cells)):
+		a = cells[j]
+		b = cells[(j + 1) % len(cells)]
+		if b[0] > a[0]:
+			dirs.append(East)
+		elif b[0] < a[0]:
+			dirs.append(West)
+		elif b[1] > a[1]:
+			dirs.append(North)
+		else:
+			dirs.append(South)
+	return dirs
+
+def loop_block(x0, y0, deadline, start):
+	# Two drones go round the same loop, half a lap apart, until the round
+	# ends. Half a lap is always longer than a watered pumpkin takes to
+	# grow, so every visit finds a finished tile: plant anything empty or
+	# dead, and at the two bottom corners check whether the block merged
+	# (same measure() number at both = one 6x6 giant) and harvest it.
+	cells = loop_cells()
+	dirs = loop_dirs(cells)
+	j = start
+	goto(x0 + cells[j][0], y0 + cells[j][1])
+	corner = {0: None, 5: None}
+	merged = 0
+	while get_time() < deadline:
+		c = cells[j]
+		if get_entity_type() != Entities.Pumpkin:
+			tile(PUMPKIN)
+		elif c[1] == 0 and (c[0] == 0 or c[0] == 5):
+			m = measure()
+			if m != None and m == corner[5 - c[0]] and can_harvest():
+				harvest()
+				merged += 1
+				corner = {0: None, 5: None}
+			else:
+				corner[c[0]] = m
+		move(dirs[j])
+		j = (j + 1) % len(cells)
+	return merged
+
 def pumpkin_job(arg, i, k):
 	# Everyone works until the shared game clock passes the deadline, so
 	# nobody waits around for an unlucky block. Unfinished blocks simply
@@ -302,6 +362,10 @@ def pumpkin_job(arg, i, k):
 	# enough drones for two per block? then each takes half the columns
 	# (an odd width gives the second drone the extra column)
 	pairs = PUMPKIN_PAIRS and blocks > 0 and k >= 2 * blocks
+	if pairs and i < 2 * blocks and PUMPKIN_LOOP and BLOCK == 6 and gap > 0:
+		b = i // 2
+		counts["merged"] += loop_block((b % per) * span, (b // per) * span, deadline, (i % 2) * 18)
+		return counts
 	if pairs and i < 2 * blocks:
 		b = i // 2
 		if i % 2 == 0:
