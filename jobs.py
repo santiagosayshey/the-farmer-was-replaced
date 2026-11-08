@@ -1,7 +1,7 @@
 # ===== jobs: what each drone does, and running drones together =====
 
 from config import PUMPKIN, CACTUS, SUN, POLY_MODES, PUMPKIN_ROUND_SECONDS, PUMPKIN_PATIENCE, PUMPKIN_GAP, PUMPKIN_PAIRS, PUMPKIN_BLOCK, PUMPKIN_LOOP
-from util import drones, goto
+from util import drones, goto, goto_near
 from crops import tile, poly_tile
 
 
@@ -69,14 +69,6 @@ def poly_job(arg, i, k):
 		return True
 	sweep(i, k, work)
 	return [new, done]
-
-def petal_job(unused, i, k):
-	found = []
-	def work():
-		found.append([measure(), get_pos_x(), get_pos_y()])
-		return True
-	sweep(i, k, work)
-	return found
 
 def walk_line(pos, target, fwd, back):
 	while pos < target:
@@ -442,15 +434,6 @@ def pumpkin_job(arg, i, k):
 	return counts
 
 
-def harvest_job(points):
-	for p in points:
-		goto(p[0], p[1])
-		harvest()
-	return True
-
-
-# ---------- running drones together (fork / join) ----------
-
 def leader(job, arg, c, k):
 	# column leader: spawn partners for the other pieces of my column,
 	# do my own piece, then collect everyone's results
@@ -522,28 +505,132 @@ def fork_poly(mode, wants):
 		for pos in new:
 			wants[pos] = new[pos]
 
-def harvest_sunflowers():
-	# biggest petals first, so (almost) every harvest gets the 8x bonus
-	all_points = fork_collect(petal_job, 0)
+# ---------- sunflowers ----------
+# Harvesting the sunflower with the most petals on the farm gives 8x Power,
+# so the farm is harvested level by level: every 15-petal flower, then every
+# 14, and so on. No drone may start a level until everyone has finished the
+# one above. Instead of re-spawning all drones for each level (slow), the
+# leader works out how long each level takes the busiest drone and hands
+# everyone a timetable on the shared clock. Each drone only harvests its
+# own columns, in walking order, so nobody crosses the farm.
+
+def sun_plant_job(unused, i, k):
+	# plant my columns and keep sweeping until they're all grown; the last
+	# sweep notes every flower's petals (in walking order)
+	while True:
+		found = []
+		def work():
+			r = tile(SUN)
+			found.append([measure(), get_pos_x(), get_pos_y()])
+			return r
+		if sweep(i, k, work):
+			return found
+
+def owner(x, y, k, n):
+	# which drone's columns (or piece of a column) this tile is in, same as sweep()
+	if k <= n:
+		return x % k
+	pieces = k // n
+	for p in range(pieces):
+		if p * n // pieces <= y and y < (p + 1) * n // pieces:
+			return p * n + x
+	return x
+
+def wrap_dist(a, b, n):
+	dx = a[0] - b[0]
+	if dx < 0:
+		dx = -dx
+	if n - dx < dx:
+		dx = n - dx
+	dy = a[1] - b[1]
+	if dy < 0:
+		dy = -dy
+	if n - dy < dy:
+		dy = n - dy
+	return dx + dy
+
+def sun_harvest_job(plan, starts):
+	# plan[L] = my tiles for level L in walking order; starts[L] = when level L may begin
+	late = 0
+	for L in range(len(plan)):
+		while get_time() < starts[L]:
+			get_entity_type()      # a 1-tick wait
+		for p in plan[L]:
+			goto_near(p[0], p[1])
+			harvest()
+		if L + 1 < len(starts) and get_time() > starts[L + 1]:
+			late += 1
+	return late
+
+def sun_round():
+	n = get_world_size()
 	k = drones()
-	for petals in range(15, 6, -1):
-		chunks = []
-		for i in range(k):
-			chunks.append([])
-		j = 0
-		for p in all_points:
+	pts = fork_collect(sun_plant_job, 0)
+	# petal levels present, biggest first
+	levels = []
+	for petals in range(15, 0, -1):
+		for p in pts:
 			if p[0] == petals:
-				chunks[j % k].append([p[1], p[2]])
-				j += 1
-		ds = []
-		for i in range(k - 1):
-			if len(chunks[i]) > 0:
-				d = spawn_drone(harvest_job, chunks[i])
-				if d != None:
-					ds.append(d)
-		harvest_job(chunks[k - 1])
-		for d in ds:
-			wait_for(d)
+				levels.append(petals)
+				break
+	index = dict()
+	for L in range(len(levels)):
+		index[levels[L]] = L
+	plans = []
+	for d in range(k):
+		row = []
+		for L in range(len(levels)):
+			row.append([])
+		plans.append(row)
+	for p in pts:
+		if p[0] in index:
+			plans[owner(p[1], p[2], k, n)][index[p[0]]].append([p[1], p[2]])
+	# walk up my columns on one level, back down on the next
+	for d in range(k):
+		for L in range(1, len(levels), 2):
+			flip = []
+			for q in range(len(plans[d][L]) - 1, -1, -1):
+				flip.append(plans[d][L][q])
+			plans[d][L] = flip
+	# how long does one action take right now (Power doubles speed)?
+	t = get_time()
+	move(North)
+	move(South)
+	dt = (get_time() - t) / 2
+	# each level lasts as long as its busiest drone needs, plus a margin
+	here = [get_pos_x(), get_pos_y()]
+	pos = []
+	for d in range(k):
+		pos.append(here)
+	starts = []
+	t = get_time() + k * dt * 1.5 + dt * 4     # time to spawn everyone first
+	for L in range(len(levels)):
+		starts.append(t)
+		worst = 0
+		for d in range(k):
+			cost = 0
+			at = pos[d]
+			for p in plans[d][L]:
+				cost += wrap_dist(at, p, n) + 1
+				at = p
+			pos[d] = at
+			if cost > worst:
+				worst = cost
+		t += (worst * 1.2 + 2) * dt
+	ds = []
+	for d in range(k - 1):
+		mine = []
+		for L in range(len(levels)):
+			mine.append(plans[d][L])
+		h = spawn_drone(sun_harvest_job, mine, starts)
+		if h != None:
+			ds.append(h)
+	late = sun_harvest_job(plans[k - 1], starts)
+	for h in ds:
+		late += wait_for(h)
+	extra["sun levels"] = len(levels)
+	extra["late levels"] = late
+	extra["harvest seconds"] = get_time() - starts[0]
 
 
 # ---------- one round of farming ----------
@@ -572,6 +659,10 @@ def field_round(mode, wants):
 		pumpkin_round(PUMPKIN_ROUND_SECONDS, PUMPKIN_PATIENCE, PUMPKIN_GAP)
 		return True
 
+	if mode == SUN:
+		sun_round()
+		return True
+
 	ok = fork(field_job, mode)
 	if not ok:
 		return False
@@ -584,6 +675,4 @@ def field_round(mode, wants):
 		extra["sort seconds"] = get_time() - t
 		extra["fields"] = 1
 		harvest()
-	elif mode == SUN:
-		harvest_sunflowers()
 	return True
