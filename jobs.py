@@ -1,6 +1,6 @@
 # ===== jobs: what each drone does, and running drones together =====
 
-from config import PUMPKIN, CACTUS, SUN, POLY_MODES, PUMPKIN_ROUND_SECONDS, PUMPKIN_PATIENCE
+from config import PUMPKIN, CACTUS, SUN, POLY_MODES, PUMPKIN_ROUND_SECONDS, PUMPKIN_PATIENCE, PUMPKIN_GAP
 from util import drones, goto
 from crops import tile, poly_tile
 
@@ -214,35 +214,50 @@ def do_block(x0, y0, deadline, patience):
 	return "pieces"
 
 def pumpkin_job(arg, i, k):
-	deadline = arg[0]
-	patience = arg[1]
 	# Everyone works until the shared game clock passes the deadline, so
 	# nobody waits around for an unlucky block. Unfinished blocks simply
 	# carry on next round (the pumpkins are still in the ground).
+	# gap > 0: blocks are separated by strips of grass, so giant pumpkins
+	# can't form across two blocks.
+	deadline = arg[0]
+	patience = arg[1]
+	gap = arg[2]
 	n = get_world_size()
-	per = n // BLOCK
+	span = BLOCK + gap
+	per = (n + gap) // span
 	blocks = per * per
 	counts = {"merged": 0, "pieces": 0, "unfinished": 0, "strip": 0}
 	if i < blocks:
 		while get_time() < deadline:
 			b = i
 			while b < blocks and get_time() < deadline:
-				counts[do_block((b % per) * BLOCK, (b // per) * BLOCK, deadline, patience)] += 1
+				counts[do_block((b % per) * span, (b // per) * span, deadline, patience)] += 1
 				b += k
 		return counts
-	# spare drones: keep looping over the leftover strip along the top and
-	# right edges
+	# spare drones: every tile that isn't inside a block
 	spares = k - blocks
 	j = i - blocks
-	edge = per * BLOCK
 	mine = []
 	count = 0
 	for x in range(n):
 		for y in range(n):
-			if x >= edge or y >= edge:
+			inside = x // span < per and y // span < per and x % span < BLOCK and y % span < BLOCK
+			if not inside:
 				if count % spares == j:
 					mine.append((x, y))
 				count += 1
+	if gap > 0:
+		# keep the gaps (and leftover edges) as grass: clear anything else
+		# off them and turn soil back into grassland. Grass regrows by itself.
+		for p in mine:
+			goto(p[0], p[1])
+			e = get_entity_type()
+			if e != None and e != Entities.Grass:
+				harvest()
+			if get_ground_type() == Grounds.Soil:
+				till()
+		return counts
+	# no gaps: grow pumpkins on the leftover strip too
 	while get_time() < deadline and len(mine) > 0:
 		for p in mine:
 			if get_time() >= deadline:
@@ -362,9 +377,9 @@ def harvest_sunflowers():
 
 extra = dict()   # numbers from the last round, for stats
 
-def pumpkin_round(seconds, patience):
+def pumpkin_round(seconds, patience, gap):
 	# one timed pumpkin round; counts go into `extra`
-	for counts in fork_all(pumpkin_job, [get_time() + seconds, patience]):
+	for counts in fork_all(pumpkin_job, [get_time() + seconds, patience, gap]):
 		for name in counts:
 			if name in extra:
 				extra[name] += counts[name]
@@ -381,7 +396,7 @@ def field_round(mode, wants):
 		return True
 
 	if mode == PUMPKIN and get_world_size() >= BLOCK:
-		pumpkin_round(PUMPKIN_ROUND_SECONDS, PUMPKIN_PATIENCE)
+		pumpkin_round(PUMPKIN_ROUND_SECONDS, PUMPKIN_PATIENCE, PUMPKIN_GAP)
 		return True
 
 	ok = fork(field_job, mode)

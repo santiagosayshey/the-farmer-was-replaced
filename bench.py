@@ -33,14 +33,15 @@ def bench_crop(mode, rounds):
 		stats.finish(mode, token, extra)
 	stats.report()
 
-def bench_pumpkin(rounds, seconds, patience):
+def bench_pumpkin(rounds, seconds, patience, gap):
 	# patience = extra checks to wait for a block to merge before taking pieces
+	# gap = grass strip between blocks (0 = blocks touch)
 	ensure_power()
 	for r in range(rounds):
 		for name in list(extra):
 			extra.pop(name)
 		token = stats.start()
-		pumpkin_round(seconds, patience)
+		pumpkin_round(seconds, patience, gap)
 		stats.finish(PUMPKIN, token, extra)
 	stats.report()
 
@@ -57,7 +58,8 @@ def bench_maze():
 	stats.report()
 
 # ---- pick one, then press play on this window ----
-bench_pumpkin(3, 20, 2)      # pumpkins with the main farm's settings
+bench_pumpkin(3, 60, 2, 1)   # gap experiment: 1-tile grass strip between blocks
+# bench_pumpkin(3, 60, 2, 0)   # no gaps (the main farm's current settings)
 # bench_crop(PUMPKIN, 3)
 # bench_crop(CACTUS, 1)
 # bench_snake()
