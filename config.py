@@ -126,7 +126,7 @@ MAZE_CYCLES = 300  # treasure grabs per maze before finishing it (max 300)
 STUCK_LIMIT = 40   # give up on a big crop after this many rounds
 SNAKE_SHORTCUT_UNTIL = 0.5   # snake cuts corners until it fills this much of the farm
 REPLAN_EVERY = 5   # rounds between planner decisions (planning takes ~a second)
-PUMPKIN_ROUND_SECONDS = 120  # each pumpkin round runs this long (longer = fewer blocks cut off)
+PUMPKIN_ROUND_SECONDS = 60  # each pumpkin round runs this long (tested: 60s beats 20s)
 PUMPKIN_PATIENCE = 2  # extra sweeps to wait for a block to merge before taking the pieces
 PUMPKIN_GAP = 1    # grass strip between blocks: every block merges into a full 6x6 (gaps + pairs passed 20M/min)
 PUMPKIN_WATER = True  # water pumpkins when planting (8x faster growth, but costs a tick-heavy action per tile)
