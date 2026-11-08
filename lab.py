@@ -6,6 +6,9 @@
 
 from dino import other_hat
 from util import goto
+from jobs import step_to
+from crops import tile
+from config import PUMPKIN
 
 def wait_until_done():
 	# stand still on a tile until the plant is grown or dead.
@@ -339,18 +342,71 @@ def lab_cure(how):
 	quick_print("CURE", how, ": merged", a != None and a == b, "| seconds", secs, "| presses", presses, "| pumpkins", num_items(Items.Pumpkin) - p0, "| weird substance", num_items(Items.Weird_Substance) - w0 + presses)
 
 
+# ---------- 7. what does plain code cost? ----------
+# Actions (move, plant, ...) cost 200 ticks. Does ordinary code (adding,
+# calling a function, list work) cost ticks too? Ticks per item for each.
+def nothing():
+	return 0
+
+def lab_ops():
+	set_world_size(4)
+	n = 1000
+	k = get_tick_count()
+	for i in range(n):
+		pass
+	quick_print("OPS: empty loop step", (get_tick_count() - k) / n, "ticks")
+	x = 0
+	k = get_tick_count()
+	for i in range(n):
+		x = x + 1
+	quick_print("OPS: loop step with x = x + 1", (get_tick_count() - k) / n, "ticks")
+	k = get_tick_count()
+	for i in range(n):
+		nothing()
+	quick_print("OPS: loop step with an empty function call", (get_tick_count() - k) / n, "ticks")
+	lst = []
+	k = get_tick_count()
+	for i in range(n):
+		lst.append(i)
+	quick_print("OPS: loop step with list.append", (get_tick_count() - k) / n, "ticks")
+	k = get_tick_count()
+	for i in range(n):
+		get_entity_type()
+	quick_print("OPS: loop step with get_entity_type()", (get_tick_count() - k) / n, "ticks")
+	k = get_tick_count()
+	for i in range(n):
+		get_time()
+	quick_print("OPS: loop step with get_time()", (get_tick_count() - k) / n, "ticks")
+	k = get_tick_count()
+	for i in range(100):
+		step_to(get_pos_x(), get_pos_y())
+	quick_print("OPS: step_to where I already am", (get_tick_count() - k) / 100, "ticks")
+	# a grown, live pumpkin: what does one tile(PUMPKIN) visit cost?
+	if get_ground_type() != Grounds.Soil:
+		till()
+	plant(Entities.Pumpkin)
+	soak()
+	while not (get_entity_type() == Entities.Pumpkin and can_harvest()):
+		if get_entity_type() == Entities.Dead_Pumpkin:
+			plant(Entities.Pumpkin)
+			soak()
+	k = get_tick_count()
+	for i in range(100):
+		tile(PUMPKIN)
+	quick_print("OPS: tile(PUMPKIN) on a grown pumpkin", (get_tick_count() - k) / 100, "ticks")
+	k = get_tick_count()
+	for i in range(20):
+		move(North)
+	quick_print("OPS: move", (get_tick_count() - k) / 20, "ticks")
+	t = get_time()
+	k = get_tick_count()
+	for i in range(20):
+		move(North)
+	quick_print("OPS: ticks per second while moving:", (get_tick_count() - k) / (get_time() - t))
+
+
 # ---------- run everything ----------
 # (earlier experiments already measured; uncomment to rerun)
 quick_print("===== LAB =====")
-# lab_speed()
-# lab_pumpkins(15, False)
-# lab_pumpkins(15, True)
-# lab_trees()
-# lab_snake_plants()
-# lab_fert_tiles(30, True)
-# lab_fert_tiles(30, False)
-# lab_fert_block(False)
-# lab_fert_block(True)
-for how in ["normal", "fert", "one", "giant1", "cure28"]:
-	lab_cure(how)
+lab_ops()
 quick_print("===== LAB DONE =====")

@@ -364,6 +364,27 @@ def pumpkin_job(arg, i, k):
 	# enough drones for two per block? then each takes half the columns
 	# (an odd width gives the second drone the extra column)
 	pairs = PUMPKIN_PAIRS and blocks > 0 and k >= 2 * blocks
+	# round overhead: how long after the round started was I spawned, and
+	# when did I reach my block? (walk there first, the same walk the block
+	# code would do anyway)
+	t_spawned = get_time()
+	b = -1
+	if pairs and i < 2 * blocks:
+		b = i // 2
+	elif not pairs and i < blocks:
+		b = i
+	if b >= 0:
+		x0 = (b % per) * span
+		y0 = (b // per) * span
+		if pairs and PUMPKIN_LOOP and BLOCK == 6 and gap > 0 and i % 2 == 1:
+			goto(x0 + 3, y0 + 3)
+		elif pairs and not PUMPKIN_LOOP and i % 2 == 1:
+			goto(x0 + BLOCK // 2, y0)
+		else:
+			goto(x0, y0)
+		counts["r_spawn"] = t_spawned - arg[3]
+		counts["r_arrive"] = get_time() - arg[3]
+		counts["r_drones"] = 1
 	if pairs and i < 2 * blocks and PUMPKIN_LOOP and BLOCK == 6 and gap > 0:
 		b = i // 2
 		r = loop_block((b % per) * span, (b // per) * span, deadline, (i % 2) * 18)
@@ -639,12 +660,16 @@ extra = dict()   # numbers from the last round, for stats
 
 def pumpkin_round(seconds, patience, gap):
 	# one timed pumpkin round; counts go into `extra`
-	for counts in fork_all(pumpkin_job, [get_time() + seconds, patience, gap]):
+	t = get_time()
+	for counts in fork_all(pumpkin_job, [t + seconds, patience, gap, t]):
 		for name in counts:
 			if name in extra:
 				extra[name] += counts[name]
 			else:
 				extra[name] = counts[name]
+	# how long after the deadline until the last drone was back
+	extra["r_over"] = get_time() - (t + seconds)
+	extra["r_rounds"] = 1
 
 def field_round(mode, wants):
 	for name in list(extra):

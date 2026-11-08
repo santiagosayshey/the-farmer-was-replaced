@@ -50,9 +50,17 @@ def report():
 		if len(ex) > 0:
 			line = line + " |"
 			for name in ex:
-				if not ("t_" in name):
+				if not ("t_" in name or "r_" in name):
 					line = line + " " + name + ": " + str(ex[name])
 		quick_print(line)
+		if "r_drones" in ex and ex["r_drones"] > 0 and b["rounds"] > 0:
+			# time lost at the start and end of every round
+			nd = ex["r_drones"]
+			rs = b["secs"] / b["rounds"]
+			spawn = ex["r_spawn"] / nd
+			arrive = ex["r_arrive"] / nd
+			over = ex["r_over"] / ex["r_rounds"]
+			quick_print("ROUND " + MODE_NAME[mode] + ": avg drone spawned after " + str(spawn) + "s, reached its block after " + str(arrive) + "s | last drone back " + str(over) + "s after the deadline | round length " + str(rs) + "s, so ~" + str(100 * (arrive + over) / rs // 1) + "% of each round is overhead")
 		if "t_block" in ex and ex["t_block"] > 0:
 			# where the drones' time inside blocks went
 			tb = ex["t_block"]
