@@ -1,6 +1,6 @@
 # ===== lab: measure the game's real rules =====
-# Run this INSIDE simulate() (see the lab_sim window) so the real farm isn't
-# touched: set_world_size() clears the farm. Each experiment prints results
+# These run INSIDE the sandbox: pick one with TASK in config and practice()
+# in the run window (set_world_size() would clear the real farm). Each experiment prints results
 # to the output window. Send the output back so the simulations can be
 # calibrated against the real game.
 
@@ -490,10 +490,3 @@ def lab_snake_cost():
 				mticks = 0
 				mcount = 0
 	change_hat(Hats.Straw_Hat)
-
-
-# ---------- run everything ----------
-# (earlier experiments already measured; uncomment to rerun)
-quick_print("===== LAB =====")
-lab_snake_cost()
-quick_print("===== LAB DONE =====")

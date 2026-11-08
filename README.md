@@ -1,6 +1,6 @@
 # The Farmer Was Replaced: auto farm
 
-Fully automated farm for *The Farmer Was Replaced*. Run `main`.
+Fully automated farm for *The Farmer Was Replaced*. Press play on `main` to farm, or on `run` for everything else.
 
 | File | What it does |
 |---|---|
@@ -13,9 +13,10 @@ Fully automated farm for *The Farmer Was Replaced*. Run `main`.
 | `dino` | Dinosaur snake on a loop that covers every square, for bones |
 | `status` | Status line in the output window + hat status lights |
 | `stats` | Times every job, counts gains and job-specific numbers, prints a summary every 20 rounds |
-| `bench` | Run one job on its own (or inside `simulate()`) and print its numbers |
-| `lab` | Experiments that measure the game's real rules (grow times, death rate, snake vs planted tiles) |
-| `lab_sim` | Runs `lab` inside `simulate()` so the real farm isn't touched |
+| `run` | Press play for everything except the farm: sandbox practice, leaderboard runs, benches (uncomment one line) |
+| `task` | What runs inside the sandbox / a leaderboard run; the job is `TASK` in `config` (never press play) |
+| `bench` | Tests one job on the real farm and prints its numbers (used from `run`) |
+| `lab` | Experiments that measure the game's real rules (run them via `TASK` + `practice()`) |
 | `util` | `goto`, `water`, `drones` |
 
 ## Setup (Windows)

@@ -1,6 +1,6 @@
 # ===== bench: test one job on its own and print the numbers =====
-# Stop main first. Change the line at the bottom, then press play on THIS
-# window. Results go to the output window (and output.txt).
+# Tests one job on the REAL farm. Called from the run window (stop main
+# first). Results go to the output window (and output.txt).
 #
 # For a fair before/after comparison that doesn't touch your real farm, use
 # simulate() (needs the Simulation unlock), e.g.:
@@ -75,11 +75,3 @@ def bench_maze():
 	token = stats.start()
 	stats.finish(MAZE, token, do_mazes())
 	stats.report()
-
-# ---- pick one, then press play on this window ----
-bench_pumpkin(3, 60, 2, 1)   # gaps + two drones per block (16 blocks x 2 = 32 drones)
-# bench_pumpkin(3, 60, 2, 0)   # no gaps, one drone per block (25 blocks)
-# bench_crop(PUMPKIN, 3)
-# bench_crop(CACTUS, 1)
-# bench_snake()
-# bench_maze()
