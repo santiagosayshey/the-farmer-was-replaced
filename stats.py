@@ -50,5 +50,11 @@ def report():
 		if len(ex) > 0:
 			line = line + " |"
 			for name in ex:
-				line = line + " " + name + ": " + str(ex[name])
+				if not ("t_" in name):
+					line = line + " " + name + ": " + str(ex[name])
 		quick_print(line)
+		if "t_block" in ex and ex["t_block"] > 0:
+			# where the drones' time inside blocks went
+			tb = ex["t_block"]
+			rest = tb - ex["t_plant"] - ex["t_dead"]
+			quick_print("TIME " + MODE_NAME[mode] + ": planting pass " + str(100 * ex["t_plant"] / tb // 1) + "% | dead pumpkins " + str(100 * ex["t_dead"] / tb // 1) + "% | corner checks, waiting, harvest " + str(100 * rest / tb // 1) + "% | dead found: " + str(ex["dead"]))

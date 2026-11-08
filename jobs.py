@@ -202,9 +202,11 @@ def help_partner(x0, y0, cols):
 			if get_entity_type() == Entities.Dead_Pumpkin:
 				tile(PUMPKIN)
 
-def do_block(x0, y0, deadline, patience, cols):
+def do_block(x0, y0, deadline, patience, cols, tm):
 	# cols: which columns of the block are mine (all 6, or one half when two
 	# drones share a block)
+	# tm: timing notebook (seconds spent planting / on dead pumpkins)
+	t0 = get_time()
 	goto(x0 + cols[0], y0)
 	# 1. one zig-zag over my columns. Harvest anything that's grown (pieces
 	#    left over from last time), plant / replant everything, and write
@@ -224,18 +226,24 @@ def do_block(x0, y0, deadline, patience, cols):
 					move(South)
 		if c < len(cols) - 1:
 			move(East)
+	t1 = get_time()
+	tm["t_plant"] += t1 - t0
 
 	# 2. only revisit the to-do tiles (a grown, live pumpkin stays that way,
 	#    so the list only ever shrinks, apart from dead ones being replanted)
 	while len(todo) > 0:
 		if get_time() >= deadline:
+			tm["t_dead"] += get_time() - t1
 			return "unfinished"
 		left = []
 		for p in todo:
 			step_to(p[0], p[1])
+			if get_entity_type() == Entities.Dead_Pumpkin:
+				tm["dead"] += 1
 			if not tile(PUMPKIN):
 				left.append(p)
 		todo = left
+	tm["t_dead"] += get_time() - t1
 
 	# 3. my tiles are all grown and alive: is the whole block one giant
 	#    pumpkin? (bottom corners have the same measure() number).
@@ -288,6 +296,9 @@ def pumpkin_job(arg, i, k):
 	per = (n + gap) // span
 	blocks = per * per
 	counts = {"merged": 0, "pieces": 0, "unfinished": 0, "strip": 0, "partner": 0}
+	# timing (drone-seconds): t_block = everything inside blocks; the part
+	# that isn't planting or dead pumpkins is corner checks / waiting / harvest
+	tm = {"t_plant": 0, "t_dead": 0, "t_block": 0, "dead": 0}
 	# enough drones for two per block? then each takes half the columns
 	# (an odd width gives the second drone the extra column)
 	pairs = PUMPKIN_PAIRS and blocks > 0 and k >= 2 * blocks
@@ -298,14 +309,22 @@ def pumpkin_job(arg, i, k):
 		else:
 			cols = columns(BLOCK // 2, BLOCK)
 		while get_time() < deadline:
-			counts[do_block((b % per) * span, (b // per) * span, deadline, patience, cols)] += 1
+			t = get_time()
+			counts[do_block((b % per) * span, (b // per) * span, deadline, patience, cols, tm)] += 1
+			tm["t_block"] += get_time() - t
+		for name in tm:
+			counts[name] = tm[name]
 		return counts
 	if not pairs and i < blocks:
 		while get_time() < deadline:
 			b = i
 			while b < blocks and get_time() < deadline:
-				counts[do_block((b % per) * span, (b // per) * span, deadline, patience, columns(0, BLOCK))] += 1
+				t = get_time()
+				counts[do_block((b % per) * span, (b // per) * span, deadline, patience, columns(0, BLOCK), tm)] += 1
+				tm["t_block"] += get_time() - t
 				b += k
+		for name in tm:
+			counts[name] = tm[name]
 		return counts
 	# spare drones: every tile that isn't inside a block
 	busy = blocks
