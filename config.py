@@ -85,7 +85,12 @@ VALUE = {
 	Unlocks.Cactus: {Items.Cactus: 2},
 	Unlocks.Fertilizer: {Items.Weird_Substance: 2},
 	Unlocks.Polyculture: {Items.Hay: 2, Items.Wood: 2, Items.Carrot: 2},
-	Unlocks.Expand: {Items.Cactus: 1.5, Items.Pumpkin: 1.05},
+	# bigger farm: bones, cactus and gold all scale with area, plain crops
+	# gain a little because drones waste less time spawning and walking
+	Unlocks.Expand: {
+		Items.Bone: 1.5, Items.Cactus: 1.5, Items.Gold: 1.5, Items.Pumpkin: 1.05,
+		Items.Hay: 1.1, Items.Wood: 1.1, Items.Carrot: 1.1
+	},
 	Unlocks.Mazes: {Items.Gold: 1.2},
 	Unlocks.Dinosaurs: {Items.Bone: 1000},   # bones go from impossible to possible
 	Unlocks.Watering: {
