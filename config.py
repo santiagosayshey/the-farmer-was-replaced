@@ -130,7 +130,7 @@ PUMPKIN_ROUND_SECONDS = 60  # each pumpkin round runs this long (tested: 60s bea
 PUMPKIN_PATIENCE = 2  # extra sweeps to wait for a block to merge before taking the pieces
 PUMPKIN_GAP = 1    # grass strip between blocks: every block merges into a full 6x6 (gaps + pairs passed 20M/min)
 PUMPKIN_WATER = True  # water pumpkins when planting (8x faster growth, but costs a tick-heavy action per tile)
-PUMPKIN_BLOCK = 6  # block width. 6 is the smallest that pays 6 per tile (7 tested: a tie)
+PUMPKIN_BLOCK = 6  # block width. 6 is the smallest that pays 6 per tile (tested: 7 ties, 8 and 10 are ~20% worse)
 PUMPKIN_PAIRS = True  # two drones share each block when there are enough drones
-PUMPKIN_LOOP = True  # pairs walk a closed loop round the block, half a lap apart (needs PUMPKIN_BLOCK = 6 and a gap; ~25M/min)
+PUMPKIN_LOOP = True  # pairs walk a closed loop round the block, half a lap apart (needs an even PUMPKIN_BLOCK and a gap; 6x6: ~24M/min)
 STATS_EVERY = 20   # print a stats summary every this many rounds

@@ -60,7 +60,7 @@ def bench_pumpkin(rounds, seconds, patience, gap):
 		for name in list(extra):
 			extra.pop(name)
 		token = stats.start()
-		pumpkin_round(seconds, patience, gap)
+		pumpkin_round(seconds, patience, gap, 0)
 		stats.finish(PUMPKIN, token, extra)
 	stats.report()
 

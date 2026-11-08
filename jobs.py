@@ -274,20 +274,20 @@ def do_block(x0, y0, deadline, patience, cols, tm):
 			return "unfinished"
 	return "pieces"
 
-def loop_cells():
-	# a closed loop through every tile of a 6x6 block:
-	# up column 0, zig-zag columns 1-5 in rows 1-5, back along row 0
+def loop_cells(s):
+	# a closed loop through every tile of an s x s block (s even):
+	# up column 0, zig-zag columns 1..s-1 in rows 1..s-1, back along row 0
 	cells = []
-	for y in range(6):
+	for y in range(s):
 		cells.append([0, y])
-	for c in range(1, 6):
+	for c in range(1, s):
 		if c % 2 == 1:
-			for y in range(5, 0, -1):
+			for y in range(s - 1, 0, -1):
 				cells.append([c, y])
 		else:
-			for y in range(1, 6):
+			for y in range(1, s):
 				cells.append([c, y])
-	for x in range(5, 0, -1):
+	for x in range(s - 1, 0, -1):
 		cells.append([x, 0])
 	return cells
 
@@ -306,40 +306,45 @@ def loop_dirs(cells):
 			dirs.append(South)
 	return dirs
 
-def loop_block(x0, y0, deadline, start):
-	# Two drones go round the same loop, half a lap apart, until the round
-	# ends. Half a lap is always longer than a watered pumpkin takes to
-	# grow, so every visit finds a finished tile: plant anything empty or
+def loop_block(x0, y0, deadline, start, step, goal):
+	# Several drones go round the same loop, evenly spaced, until the round
+	# ends. The gap between drones is longer than a watered pumpkin takes
+	# to grow, so every visit finds a finished tile: plant anything empty or
 	# dead, and at the two bottom corners check whether the block merged
-	# (same measure() number at both = one 6x6 giant) and harvest it.
-	cells = loop_cells()
+	# (same measure() number at both = one full-block giant) and harvest it.
+	# step = the spacing between drones (lap length / drones on this loop)
+	# goal = stop as soon as we own this many pumpkins (0 = no goal)
+	cells = loop_cells(BLOCK)
 	dirs = loop_dirs(cells)
 	j = start
 	goto(x0 + cells[j][0], y0 + cells[j][1])
-	corner = {0: None, 5: None}
+	far = BLOCK - 1
+	corner = {0: None, far: None}
 	merged = 0
 	jumps = 0
 	while get_time() < deadline:
 		c = cells[j]
 		e = get_entity_type()
 		if e == Entities.Pumpkin and not can_harvest():
-			# still growing = the partner planted it moments ago: I've caught
-			# up (bus bunching). Jump half a lap ahead to spread out again;
-			# the loop folds, so that's only a few tiles away.
-			j = (j + len(cells) // 2) % len(cells)
+			# still growing = the drone ahead planted it moments ago: I've
+			# caught up (bus bunching). Jump one spacing ahead to spread out
+			# again; the loop folds, so that's only a few tiles away.
+			j = (j + step) % len(cells)
 			step_to(x0 + cells[j][0], y0 + cells[j][1])
 			jumps += 1
 			continue
 		if e != Entities.Pumpkin:
 			tile(PUMPKIN)
-		elif c[1] == 0 and (c[0] == 0 or c[0] == 5):
+		elif c[1] == 0 and (c[0] == 0 or c[0] == far):
 			m = measure()
-			if m != None and m == corner[5 - c[0]] and can_harvest():
+			if m != None and m == corner[far - c[0]] and can_harvest():
 				harvest()
 				merged += 1
-				corner = {0: None, 5: None}
+				corner = {0: None, far: None}
 			else:
 				corner[c[0]] = m
+			if goal > 0 and num_items(Items.Pumpkin) >= goal:
+				return [merged, jumps]     # leaderboard goal reached: stop
 		move(dirs[j])
 		j = (j + 1) % len(cells)
 	return [merged, jumps]
@@ -368,6 +373,26 @@ def pumpkin_job(arg, i, k):
 	# when did I reach my block? (walk there first, the same walk the block
 	# code would do anyway)
 	t_spawned = get_time()
+	if PUMPKIN_LOOP and BLOCK % 2 == 0 and gap > 0 and blocks > 0 and k >= 2 * blocks:
+		# loop mode: every drone joins a block's loop, spread evenly
+		b = i % blocks
+		slot = i // blocks
+		m = k // blocks
+		if b < k % blocks:
+			m += 1
+		lap = BLOCK * BLOCK
+		start = slot * lap // m
+		x0 = (b % per) * span
+		y0 = (b // per) * span
+		cell = loop_cells(BLOCK)[start]
+		goto(x0 + cell[0], y0 + cell[1])
+		counts["r_spawn"] = t_spawned - arg[3]
+		counts["r_arrive"] = get_time() - arg[3]
+		counts["r_drones"] = 1
+		r = loop_block(x0, y0, deadline, start, lap // m, arg[4])
+		counts["merged"] += r[0]
+		counts["jumps"] = r[1]
+		return counts
 	b = -1
 	if pairs and i < 2 * blocks:
 		b = i // 2
@@ -376,21 +401,13 @@ def pumpkin_job(arg, i, k):
 	if b >= 0:
 		x0 = (b % per) * span
 		y0 = (b // per) * span
-		if pairs and PUMPKIN_LOOP and BLOCK == 6 and gap > 0 and i % 2 == 1:
-			goto(x0 + 3, y0 + 3)
-		elif pairs and not PUMPKIN_LOOP and i % 2 == 1:
+		if pairs and i % 2 == 1:
 			goto(x0 + BLOCK // 2, y0)
 		else:
 			goto(x0, y0)
 		counts["r_spawn"] = t_spawned - arg[3]
 		counts["r_arrive"] = get_time() - arg[3]
 		counts["r_drones"] = 1
-	if pairs and i < 2 * blocks and PUMPKIN_LOOP and BLOCK == 6 and gap > 0:
-		b = i // 2
-		r = loop_block((b % per) * span, (b // per) * span, deadline, (i % 2) * 18)
-		counts["merged"] += r[0]
-		counts["jumps"] = r[1]
-		return counts
 	if pairs and i < 2 * blocks:
 		b = i // 2
 		if i % 2 == 0:
@@ -658,10 +675,11 @@ def sun_round():
 
 extra = dict()   # numbers from the last round, for stats
 
-def pumpkin_round(seconds, patience, gap):
+def pumpkin_round(seconds, patience, gap, goal):
 	# one timed pumpkin round; counts go into `extra`
+	# goal: everyone stops as soon as we own this many pumpkins (0 = no goal)
 	t = get_time()
-	for counts in fork_all(pumpkin_job, [t + seconds, patience, gap, t]):
+	for counts in fork_all(pumpkin_job, [t + seconds, patience, gap, t, goal]):
 		for name in counts:
 			if name in extra:
 				extra[name] += counts[name]
@@ -681,7 +699,7 @@ def field_round(mode, wants):
 		return True
 
 	if mode == PUMPKIN and get_world_size() >= BLOCK:
-		pumpkin_round(PUMPKIN_ROUND_SECONDS, PUMPKIN_PATIENCE, PUMPKIN_GAP)
+		pumpkin_round(PUMPKIN_ROUND_SECONDS, PUMPKIN_PATIENCE, PUMPKIN_GAP, 0)
 		return True
 
 	if mode == SUN:
