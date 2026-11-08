@@ -1,7 +1,7 @@
 # ===== main: the loop. Run this one. =====
 
 from config import MAZE, DINO, BIG_MODES, STUCK_LIMIT, POWER_MIN, REPLAN_EVERY
-from config import MODE_ITEM, STATS_EVERY, SNAKE_LIGHT
+from config import MODE_ITEM, STATS_EVERY
 from jobs import field_round, extra
 from mazes import do_mazes
 from dino import do_dino
@@ -48,7 +48,7 @@ while True:
 		record(run, before, t0, True)
 		continue
 	if run == DINO:
-		stats.finish(run, token, do_dino(-1, SNAKE_LIGHT))
+		stats.finish(run, token, do_dino(-1))
 		record(run, before, t0, True)
 		continue
 

@@ -3,7 +3,7 @@
 # (practice) or leaderboard_run() (real). Which job: TASK in config.
 # New experiments go in lab (or here), never in a new window.
 
-from config import TASK, PUMPKIN_PATIENCE, PUMPKIN_GAP, SNAKE_LIGHT
+from config import TASK, PUMPKIN_PATIENCE, PUMPKIN_GAP
 from jobs import pumpkin_round
 from dino import do_dino
 import lab
@@ -19,17 +19,17 @@ def lb_dino():
 	goal = 33488928
 	t0 = get_time()
 	while num_items(Items.Bone) < goal:
-		do_dino(-1, SNAKE_LIGHT)
+		do_dino(-1)
 	quick_print("LEADERBOARD bones:", num_items(Items.Bone), "in", get_time() - t0, "s")
 
 def snake_compare():
-	# one full snake per setting (different random apples each time, so
+	# one full snake per cut-off (different random apples each time, so
 	# only trust big differences)
-	for setting in [[0.2, False], [0.5, True], [0.85, True], [1.0, True]]:
+	for cut in [0.15, 0.2, 0.3]:
 		b0 = num_items(Items.Bone)
 		t0 = get_time()
-		do_dino(setting[0], setting[1])
-		quick_print("SNAKE cut", setting[0], "can_move", setting[1], ":", get_time() - t0, "game seconds, bones", num_items(Items.Bone) - b0)
+		do_dino(cut)
+		quick_print("SNAKE cut", cut, ":", get_time() - t0, "game seconds, bones", num_items(Items.Bone) - b0)
 
 quick_print("===== TASK", TASK, "=====")
 if TASK == "lb_pumpkins":

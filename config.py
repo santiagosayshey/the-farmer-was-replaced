@@ -124,7 +124,6 @@ POWER_MIN = 3000   # top up sunflowers below this (32 drones burn ~1900 a minute
 FIELD_BUFFER = 1.5 # need this many fields' worth of seed cost before planting
 MAZE_CYCLES = 300  # treasure grabs per maze before finishing it (max 300)
 STUCK_LIMIT = 40   # give up on a big crop after this many rounds
-SNAKE_LIGHT = False   # snake shortcuts checked with can_move() instead of tail tracking (testing)
 SNAKE_SHORTCUT_UNTIL = 0.2   # snake cuts corners until it fills this much of the farm (real game: 0.2 = 952s, 0.3 = 958s, 0.5 = ~1165s, 1.0 = 2998s)
 REPLAN_EVERY = 5   # rounds between planner decisions (planning takes ~a second)
 PUMPKIN_ROUND_SECONDS = 60  # each pumpkin round runs this long (tested: 60s beats 20s)
@@ -144,4 +143,4 @@ STATS_EVERY = 20   # print a stats summary every this many rounds
 #   "snake_compare" full snakes with different shortcut cut-offs
 #   "lab_water", "lab_ops", "lab_snake_cost", "lab_cure", "lab_speed", ...
 #                   any experiment in lab, by name
-TASK = "snake_compare"
+TASK = "lb_dino"
