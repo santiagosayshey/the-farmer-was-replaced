@@ -73,8 +73,10 @@ def apple_cost():
 	return get_cost(Entities.Apple)
 
 
-def do_dino(cut):
+def do_dino(cut, light):
 	# cut = share of the farm to keep cutting corners until (< 0: use config)
+	# light = check shortcuts with can_move() instead of tracking the tail
+	#         (much less thinking per step; a tip from the game's Discord)
 	n = get_world_size()
 	total = n * n
 	clear()                  # empty farm (apples only appear on empty tiles)
@@ -125,7 +127,35 @@ def do_dino(cut):
 	if get_entity_type() == Entities.Apple:
 		apple_at = 0
 	follow1 = [1, None]
-	while length < cut_off and idle < total:
+	while light and length < cut_off and idle < total:
+		grow = 0
+		if h == apple_at:
+			a = measure()
+			apple_at = -1
+			if a != None:
+				apple_at = order[a]
+			grow = 1
+			idle = 0
+		elif apple_at < 0:
+			idle += 1
+			if get_entity_type() == Entities.Apple:
+				apple_at = h
+				continue
+		reach = (apple_at - h) % total
+		gain = 1
+		d = ldir[h]
+		for g in ljump[h]:
+			if g[0] == 1:
+				break
+			if g[0] <= reach and can_move(g[1]):
+				gain = g[0]
+				d = g[1]
+				break
+		if not move(d):
+			break            # boxed in (or the farm is full)
+		h = (h + gain) % total
+		length += grow
+	while not light and length < cut_off and idle < total:
 		grow = 0
 		if h == apple_at:
 			# standing on the apple: where's the next one?

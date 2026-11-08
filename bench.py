@@ -8,7 +8,7 @@
 # Same seed = same random apples/pumpkin deaths, so two versions can be compared.
 
 from config import HAY, WOOD, FERT, CARROT, PUMPKIN, CACTUS, SUN, MAZE, DINO
-from config import POWER_MIN
+from config import POWER_MIN, SNAKE_LIGHT
 from jobs import field_round, pumpkin_round, extra
 from planner import plan
 from mazes import do_mazes
@@ -67,7 +67,7 @@ def bench_pumpkin(rounds, seconds, patience, gap):
 def bench_snake():
 	ensure_power(300)
 	token = stats.start()
-	stats.finish(DINO, token, do_dino(-1))
+	stats.finish(DINO, token, do_dino(-1, SNAKE_LIGHT))
 	stats.report()
 
 def bench_maze():
