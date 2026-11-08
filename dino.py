@@ -11,6 +11,10 @@
 # pass its own tail or overshoot the apple. When the snake gets long, it
 # stops cutting corners and just follows the loop.
 #
+# Speed: once the snake has eaten ~80 apples, moves are so cheap that the
+# THINKING is half the cost. So everything is worked out once up front
+# (tables), and each step does as little as possible.
+#
 # Bones = tail length squared.
 
 from config import SNAKE_SHORTCUT_UNTIL
@@ -33,17 +37,31 @@ def next_dir(x, y, n):
 		return South
 	return West              # back to the start
 
-def loop_order(n):
-	# square -> its position along the loop
+def build_tables(n):
+	# order[sq]  = place on the loop
+	# follow[sq] = [direction, next square] along the loop
+	# jumps[sq]  = [[direction, neighbour, its place], ...] for every neighbour
 	order = dict()
+	follow = dict()
 	x = 0
 	y = 0
 	for i in range(n * n):
+		d = next_dir(x, y, n)
+		dx, dy = step[d]
 		order[(x, y)] = i
-		dx, dy = step[next_dir(x, y, n)]
+		follow[(x, y)] = [d, (x + dx, y + dy)]
 		x += dx
 		y += dy
-	return order
+	jumps = dict()
+	for sq in order:
+		options = []
+		for d in step:
+			dx, dy = step[d]
+			nb = (sq[0] + dx, sq[1] + dy)
+			if nb in order:
+				options.append([d, nb, order[nb]])
+		jumps[sq] = options
+	return [order, follow, jumps]
 
 def other_hat():
 	for h in Hats:
@@ -55,59 +73,82 @@ def apple_cost():
 	return get_cost(Entities.Apple)
 
 
-def pick_move(order, n, head, body, length, apple):
-	# returns the best direction, or None to just follow the loop
-	total = n * n
-	if apple == None or length >= total * SNAKE_SHORTCUT_UNTIL:
-		return None
-	h = order[head]
-	if length > 0:
-		room = (order[body[len(body) - length]] - h) % total   # distance to tail
-	else:
-		room = total
-	to_apple = (order[apple] - h) % total
-	best = None
-	best_gain = 1      # following the loop gains 1; only beat that
-	for d in step:
-		dx, dy = step[d]
-		nb = (head[0] + dx, head[1] + dy)
-		if nb[0] < 0 or nb[0] >= n or nb[1] < 0 or nb[1] >= n:
-			continue
-		gain = (order[nb] - h) % total
-		# must stay ahead of the tail (with a little slack) and not overshoot
-		if gain > best_gain and gain < room - 2 and gain <= to_apple:
-			best = d
-			best_gain = gain
-	return best
-
 def do_dino():
 	n = get_world_size()
+	total = n * n
 	clear()                  # empty farm (apples only appear on empty tiles)
+	tables = build_tables(n)
+	order = tables[0]
+	follow = tables[1]
+	jumps = tables[2]
+	cut_off = total * SNAKE_SHORTCUT_UNTIL
+
 	change_hat(Hats.Dinosaur_Hat)
-	order = loop_order(n)
-	body = []                # squares the head has left, oldest first
-	length = 0               # tail segments (one per apple eaten)
-	apple = None             # where the next apple will be
+	head = (0, 0)            # clear() puts us at (0, 0)
+	body = []                # every square the head has left (never shrinks)
+	length = 0               # tail segments = apples eaten
+	apple_at = -1            # loop place of the next apple (-1 = unknown)
 	idle = 0
-	while idle < n * n:
-		head = (get_pos_x(), get_pos_y())
+	while idle < total and length < cut_off:
+		h = order[head]
 		eating = get_entity_type() == Entities.Apple
 		if eating:
-			apple = measure()        # standing on an apple: where's the next one?
+			a = measure()    # standing on an apple: where's the next one?
+			if a == None:
+				apple_at = -1
+			else:
+				apple_at = order[a]
 			idle = 0
 		else:
 			idle += 1
 
-		d = pick_move(order, n, head, body, length, apple)
-		if d == None or not move(d):
-			if not move(next_dir(head[0], head[1], n)):
-				break                # can't move: the snake fills the farm
+		# default: follow the loop
+		nxt = follow[head]
+		d = nxt[0]
+		target = nxt[1]
+
+		# shortcut: furthest jump that stays behind the tail and the apple
+		if length < cut_off and apple_at >= 0:
+			if length > 0:
+				room = (order[body[len(body) - length]] - h) % total - 2
+			else:
+				room = total
+			reach = (apple_at - h) % total
+			if room < reach:
+				reach = room
+			best = 1
+			for option in jumps[head]:
+				gain = (option[2] - h) % total
+				if gain > best and gain <= reach:
+					best = gain
+					d = option[0]
+					target = option[1]
+
+		if not move(d):
+			if d == nxt[0] or not move(nxt[0]):
+				break        # can't move: the snake fills the farm
+			target = nxt[1]
 		body.append(head)
+		head = target
 		if eating:
 			length += 1
-		# forget squares the tail has already left (keeps the list short)
-		if len(body) > length + 1:
-			body.pop(0)
+
+	# Long snake: just follow the loop. No apple or tail tracking needed, so
+	# this loop is tiny (moves are cheap now; thinking would be the cost).
+	# Every lap, check we can still afford apples, so we don't loop forever.
+	if idle < total:
+		cost = apple_cost()
+		steps = 0
+		while move(follow[head][0]):
+			head = follow[head][1]
+			steps += 1
+			if steps >= total:
+				steps = 0
+				for c in cost:
+					if num_items(c) < cost[c]:
+						idle = total
+				if idle >= total:
+					break
 
 	# taking the hat off harvests the tail
 	h = other_hat()
