@@ -78,24 +78,56 @@ def petal_job(unused, i, k):
 	sweep(i, k, work)
 	return found
 
+def walk_line(pos, target, fwd, back):
+	while pos < target:
+		move(fwd)
+		pos += 1
+	while pos > target:
+		move(back)
+		pos -= 1
+	return pos
+
+def sort_line(fwd, back, n):
+	# Cocktail shaker sort with shrinking bounds, along one row or column.
+	# Sweep forward (big cacti ride to the end), then backward (small ones
+	# ride to the start). Everything past the last swap is already in order,
+	# so the unsorted stretch [lo, hi] shrinks from both ends.
+	pos = 0
+	lo = 0
+	hi = n - 1
+	while lo < hi:
+		pos = walk_line(pos, lo, fwd, back)
+		last = lo
+		for p in range(lo, hi):
+			if measure() > measure(fwd):
+				swap(fwd)
+				last = p
+			move(fwd)
+		pos = hi
+		hi = last
+		if lo >= hi:
+			break
+		pos = walk_line(pos, hi, fwd, back)
+		last = hi
+		for p in range(hi, lo, -1):
+			if measure() < measure(back):
+				swap(back)
+				last = p
+			move(back)
+		pos = lo
+		lo = last
+
 def sort_job(dir, i, k):
-	# bubble sort my rows (dir = East) or my columns (dir = North)
+	# sort my rows (dir = East) or my columns (dir = North)
 	n = get_world_size()
 	line = i
 	while line < n:
 		if dir == East:
 			goto(0, line)
+			sort_line(East, West, n)
 		else:
 			goto(line, 0)
-		swapped = True
-		while swapped:
-			swapped = False
-			for s in range(n - 1):
-				if measure() > measure(dir):
-					swap(dir)
-					swapped = True
-				move(dir)
-			move(dir)   # wraps back to the start of the line
+			sort_line(North, South, n)
 		line += k
 	return True
 
