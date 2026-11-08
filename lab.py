@@ -5,6 +5,7 @@
 # calibrated against the real game.
 
 from dino import other_hat
+from util import goto
 
 def wait_until_done():
 	# stand still on a tile until the plant is grown or dead.
@@ -273,17 +274,83 @@ def lab_fert_block(use_fert):
 	quick_print("FERT BLOCK fert=", use_fert, ": merged", merged, "| seconds", t_grow, "| extra sweeps", sweeps - 1, "| pumpkins", num_items(Items.Pumpkin) - p0, "| weird substance", num_items(Items.Weird_Substance) - w0, "| fertilizer used", f0 - num_items(Items.Fertilizer))
 
 
+# ---------- 6. curing infected giants with Weird Substance ----------
+# Weird Substance toggles infection on the plant AND its 4 neighbours, so
+# curing a whole fully-infected 6x6 is a "lights out" puzzle. These 28
+# presses (solved offline) turn every tile of a 6x6 from infected to healthy.
+CURE_6 = [[0, 0], [2, 0], [3, 0], [5, 0], [1, 1], [2, 1], [3, 1], [4, 1], [0, 2], [1, 2], [2, 2], [3, 2], [4, 2], [5, 2], [0, 3], [1, 3], [2, 3], [3, 3], [4, 3], [5, 3], [1, 4], [2, 4], [3, 4], [4, 4], [0, 5], [2, 5], [3, 5], [5, 5]]
+
+def lab_cure(how):
+	# how: "normal"  plant + water, no fertilizer (the reference)
+	#      "fert"    every tile fertilized, no cure
+	#      "one"     ONLY the corner tile fertilized (does one infected tile
+	#                spoil the whole giant, or just its share?)
+	#      "giant1"  every tile fertilized, then ONE Weird Substance on the
+	#                finished giant (is a giant one plant with one infection?)
+	#      "cure28"  every tile fertilized, then the 28-press pattern
+	# 8x8 farm, block in the corner, so presses never wrap round onto the block
+	set_world_size(8)
+	for x in range(6):
+		for y in range(6):
+			goto(x, y)
+			if get_ground_type() != Grounds.Soil:
+				till()
+	p0 = num_items(Items.Pumpkin)
+	w0 = num_items(Items.Weird_Substance)
+	t0 = get_time()
+	for x in range(6):
+		for y in range(6):
+			goto(x, y)
+			if how == "fert" or how == "giant1" or how == "cure28" or (how == "one" and x == 0 and y == 0):
+				fert_tile()
+			else:
+				plant(Entities.Pumpkin)
+				soak()
+	# replant dead ones (only the unfertilized ones can still die)
+	done = False
+	while not done:
+		done = True
+		for x in range(6):
+			for y in range(6):
+				goto(x, y)
+				if get_entity_type() != Entities.Pumpkin:
+					plant(Entities.Pumpkin)
+					soak()
+					done = False
+				elif not can_harvest():
+					done = False
+	presses = 0
+	if how == "giant1":
+		goto(0, 0)
+		use_item(Items.Weird_Substance)
+		presses = 1
+	if how == "cure28":
+		for p in CURE_6:
+			goto(p[0], p[1])
+			use_item(Items.Weird_Substance)
+			presses += 1
+	goto(0, 0)
+	a = measure()
+	goto(5, 0)
+	b = measure()
+	goto(0, 0)
+	secs = get_time() - t0
+	harvest()
+	quick_print("CURE", how, ": merged", a != None and a == b, "| seconds", secs, "| presses", presses, "| pumpkins", num_items(Items.Pumpkin) - p0, "| weird substance", num_items(Items.Weird_Substance) - w0 + presses)
+
+
 # ---------- run everything ----------
-# (1-4 already measured; uncomment to rerun)
+# (earlier experiments already measured; uncomment to rerun)
 quick_print("===== LAB =====")
 # lab_speed()
 # lab_pumpkins(15, False)
 # lab_pumpkins(15, True)
 # lab_trees()
 # lab_snake_plants()
-lab_fert_tiles(30, True)
-lab_fert_tiles(30, False)
-for r in range(3):
-	lab_fert_block(False)
-	lab_fert_block(True)
+# lab_fert_tiles(30, True)
+# lab_fert_tiles(30, False)
+# lab_fert_block(False)
+# lab_fert_block(True)
+for how in ["normal", "fert", "one", "giant1", "cure28"]:
+	lab_cure(how)
 quick_print("===== LAB DONE =====")
