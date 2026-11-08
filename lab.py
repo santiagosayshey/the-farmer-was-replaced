@@ -175,11 +175,115 @@ def lab_snake_plants():
 	change_hat(other_hat())
 
 
+# ---------- 5. fertilizer on pumpkins ----------
+def soak():
+	while get_water() < 1 and num_items(Items.Water) > 0:
+		use_item(Items.Water)
+
+def lab_fert_tiles(samples, watered):
+	# a) plant, (water), fertilize: how long until grown/dead now? same death rate?
+	set_world_size(4)
+	times = []
+	instant = 0
+	deaths = 0
+	for i in range(samples):
+		if get_ground_type() != Grounds.Soil:
+			till()
+		plant(Entities.Pumpkin)
+		if watered:
+			soak()
+		use_item(Items.Fertilizer)
+		e = get_entity_type()
+		if e == Entities.Dead_Pumpkin or can_harvest():
+			instant += 1
+		result = wait_until_done()
+		times.append(result[0])
+		if result[1] == "dead":
+			deaths += 1
+		harvest()
+	quick_print("FERT TILE watered=", watered, ": done instantly", instant, "of", samples, "| avg wait after fertilizing", avg(times), "s | died", deaths, "of", samples)
+
+def fert_tile():
+	# stay on this tile until it holds a grown, live pumpkin. returns fertilizer used
+	used = 0
+	while True:
+		if get_entity_type() != Entities.Pumpkin:
+			plant(Entities.Pumpkin)
+			soak()
+			use_item(Items.Fertilizer)
+			used += 1
+		if get_entity_type() == Entities.Pumpkin:
+			if can_harvest():
+				return used
+			if wait_until_done()[1] == "grown":
+				return used
+
+def lab_fert_block(use_fert):
+	# b) one drone builds and harvests a full 6x6 giant: time, pumpkins,
+	#    weird substance and fertilizer used. Normal way = plant + water,
+	#    then sweep replanting dead ones until everything is grown.
+	set_world_size(6)
+	for x in range(6):
+		for y in range(6):
+			if get_ground_type() != Grounds.Soil:
+				till()
+			move(North)
+		move(East)
+	p0 = num_items(Items.Pumpkin)
+	w0 = num_items(Items.Weird_Substance)
+	f0 = num_items(Items.Fertilizer)
+	t0 = get_time()
+	for x in range(6):
+		for y in range(6):
+			if use_fert:
+				fert_tile()
+			else:
+				plant(Entities.Pumpkin)
+				soak()
+			if y < 5:
+				if x % 2 == 0:
+					move(North)
+				else:
+					move(South)
+		move(East)
+	sweeps = 0
+	while True:
+		all_good = True
+		for x in range(6):
+			for y in range(6):
+				if get_entity_type() != Entities.Pumpkin:
+					plant(Entities.Pumpkin)
+					soak()
+					all_good = False
+				elif not can_harvest():
+					all_good = False
+				move(North)
+			move(East)
+		sweeps += 1
+		if all_good:
+			break
+	# corners should now be one giant
+	a = measure()
+	for i in range(5):
+		move(East)
+	b = measure()
+	merged = a != None and a == b
+	t_grow = get_time() - t0
+	harvest()
+	quick_print("FERT BLOCK fert=", use_fert, ": merged", merged, "| seconds", t_grow, "| extra sweeps", sweeps - 1, "| pumpkins", num_items(Items.Pumpkin) - p0, "| weird substance", num_items(Items.Weird_Substance) - w0, "| fertilizer used", f0 - num_items(Items.Fertilizer))
+
+
 # ---------- run everything ----------
+# (1-4 already measured; uncomment to rerun)
 quick_print("===== LAB =====")
-lab_speed()
-lab_pumpkins(15, False)
-lab_pumpkins(15, True)
-lab_trees()
-lab_snake_plants()
+# lab_speed()
+# lab_pumpkins(15, False)
+# lab_pumpkins(15, True)
+# lab_trees()
+# lab_snake_plants()
+lab_fert_tiles(30, True)
+lab_fert_tiles(30, False)
+for r in range(3):
+	lab_fert_block(False)
+	lab_fert_block(True)
 quick_print("===== LAB DONE =====")
