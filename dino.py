@@ -84,55 +84,78 @@ def do_dino():
 	cut_off = total * SNAKE_SHORTCUT_UNTIL
 	t0 = get_time()
 
+	# lean tables on loop places (plain numbers, not (x, y) squares):
+	#   ldir[i]  = direction from place i to place i + 1
+	#   ljump[i] = [[gain, direction], ...] biggest gain first (gain 1 = follow)
+	#   sq_at[i] = the square at place i
+	ldir = []
+	sq_at = []
+	for i in range(total):
+		ldir.append(None)
+		sq_at.append(None)
+	for sq in order:
+		ldir[order[sq]] = follow[sq][0]
+		sq_at[order[sq]] = sq
+	ljump = []
+	for i in range(total):
+		opts = []
+		for option in jumps[sq_at[i]]:
+			gain = (option[2] - i) % total
+			if gain >= 1 and gain < total // 2:
+				opts.append([gain, option[0]])
+		# sort biggest first (tiny lists: insertion sort)
+		for p in range(1, len(opts)):
+			q = p
+			while q > 0 and opts[q][0] > opts[q - 1][0]:
+				t = opts[q]
+				opts[q] = opts[q - 1]
+				opts[q - 1] = t
+				q -= 1
+		ljump.append(opts)
+
 	change_hat(Hats.Dinosaur_Hat)
-	head = (0, 0)            # clear() puts us at (0, 0)
-	body = []                # every square the head has left (never shrinks)
+	h = 0                    # place on the loop; clear() puts us at (0, 0) = place 0
+	hist = []                # every place the head has left (never shrinks)
 	length = 0               # tail segments = apples eaten
-	apple_at = -1            # loop place of the next apple (-1 = unknown)
+	apple_at = -1            # place of the next apple (-1 = unknown)
 	idle = 0
-	while idle < total and length < cut_off:
-		h = order[head]
-		eating = get_entity_type() == Entities.Apple
-		if eating:
-			a = measure()    # standing on an apple: where's the next one?
-			if a == None:
-				apple_at = -1
-			else:
+	if get_entity_type() == Entities.Apple:
+		apple_at = 0
+	follow1 = [1, None]
+	while length < cut_off and idle < total:
+		grow = 0
+		if h == apple_at:
+			# standing on the apple: where's the next one?
+			a = measure()
+			apple_at = -1
+			if a != None:
 				apple_at = order[a]
+			grow = 1
 			idle = 0
-		else:
+		elif apple_at < 0:
 			idle += 1
-
-		# default: follow the loop
-		nxt = follow[head]
-		d = nxt[0]
-		target = nxt[1]
-
-		# shortcut: furthest jump that stays behind the tail and the apple
-		if length < cut_off and apple_at >= 0:
-			if length > 0:
-				room = (order[body[len(body) - length]] - h) % total - 2
-			else:
-				room = total
-			reach = (apple_at - h) % total
+			if get_entity_type() == Entities.Apple:
+				apple_at = h
+				continue
+		reach = (apple_at - h) % total
+		if length > 0:
+			room = (hist[len(hist) - length] - h) % total - 2
 			if room < reach:
 				reach = room
-			best = 1
-			for option in jumps[head]:
-				gain = (option[2] - h) % total
-				if gain > best and gain <= reach:
-					best = gain
-					d = option[0]
-					target = option[1]
-
-		if not move(d):
-			if d == nxt[0] or not move(nxt[0]):
+		pick = follow1
+		for g in ljump[h]:
+			if g[0] <= reach:
+				pick = g
+				break
+		if pick[0] == 1 or not move(pick[1]):
+			pick = follow1
+			if not move(ldir[h]):
 				break        # can't move: the snake fills the farm
-			target = nxt[1]
-		body.append(head)
-		head = target
-		if eating:
-			length += 1
+		hist.append(h)
+		h = (h + pick[0]) % total
+		length += grow
+	head = sq_at[h]
+	body = hist
 
 	t_cut = get_time()
 	# Long snake: just follow the loop. No apple or tail tracking needed, so
@@ -140,17 +163,23 @@ def do_dino():
 	# Every lap, check we can still afford apples, so we don't loop forever.
 	if idle < total:
 		cost = apple_cost()
-		steps = 0
-		while move(follow[head][0]):
-			head = follow[head][1]
-			steps += 1
-			if steps >= total:
-				steps = 0
+		# the loop as a plain list of directions, starting from the head, so
+		# each step is just "move, did it work?" (two lines of code)
+		lap = []
+		sq = head
+		for i in range(total):
+			lap.append(follow[sq][0])
+			sq = follow[sq][1]
+		going = True
+		while going:
+			for d in lap:
+				if not move(d):
+					going = False
+					break
+			if going:
 				for c in cost:
 					if num_items(c) < cost[c]:
-						idle = total
-				if idle >= total:
-					break
+						going = False
 
 	t_end = get_time()
 	# taking the hat off harvests the tail
