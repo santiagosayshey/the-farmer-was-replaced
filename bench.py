@@ -29,6 +29,19 @@ def ensure_power(seconds):
 		tries += 1
 	quick_print("bench starting with Power:", num_items(Items.Power))
 
+def ensure_carrots(seconds):
+	# Pumpkins cost carrots to plant. 32 drones on 7x7 blocks plant roughly
+	# 12000 pumpkins a minute (deaths included), so stock up for the whole
+	# bench first. Carrots before Power: farming carrots burns Power.
+	cost = get_cost(Entities.Pumpkin)
+	tries = 0
+	for item in cost:
+		target = cost[item] * 12000 * seconds / 60
+		while num_items(item) < target and tries < 60:
+			field_round(plan(item), dict())
+			tries += 1
+		quick_print("bench starting with", item, ":", num_items(item), "(want", target, ")")
+
 def bench_crop(mode, rounds):
 	ensure_power(rounds * 60)
 	wants = dict()
@@ -41,6 +54,7 @@ def bench_crop(mode, rounds):
 def bench_pumpkin(rounds, seconds, patience, gap):
 	# patience = extra checks to wait for a block to merge before taking pieces
 	# gap = grass strip between blocks (0 = blocks touch)
+	ensure_carrots(rounds * seconds)
 	ensure_power(rounds * seconds)
 	for r in range(rounds):
 		for name in list(extra):
