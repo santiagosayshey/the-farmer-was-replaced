@@ -92,7 +92,7 @@ VALUE = {
 		Items.Hay: 1.1, Items.Wood: 1.1, Items.Carrot: 1.1
 	},
 	Unlocks.Mazes: {Items.Gold: 1.2},
-	Unlocks.Dinosaurs: {Items.Bone: 1000},   # bones go from impossible to possible
+	Unlocks.Dinosaurs: {Items.Bone: 1000},   # first unlock: bones go from impossible to possible (later levels count as 2x, see planner)
 	Unlocks.Watering: {
 		Items.Hay: 1.05, Items.Wood: 1.05, Items.Carrot: 1.05, Items.Pumpkin: 1.05
 	}

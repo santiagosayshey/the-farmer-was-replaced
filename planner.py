@@ -31,9 +31,10 @@ def init_inputs():
 	n = get_world_size()
 	inp[Items.Gold] = {Items.Weird_Substance: 1.0 / n}
 	apple = apple_cost()
+	mult = 2 ** (num_unlocked(Unlocks.Dinosaurs) - 1)
 	bone = dict()
 	for c in apple:
-		bone[c] = apple[c] * 1.0 / (n * n)
+		bone[c] = apple[c] * 1.0 / (n * n * mult)
 	inp[Items.Bone] = bone
 
 def secs(item, boost, depth):
@@ -203,7 +204,10 @@ def choose():
 			cheapest = u
 			cheapest_t = t
 		if u in VALUE:
-			boosted = table(VALUE[u])
+			value = VALUE[u]
+			if u == Unlocks.Dinosaurs and num_unlocked(Unlocks.Dinosaurs) > 0:
+				value = {Items.Bone: 2}    # each level doubles bones
+			boosted = table(value)
 			saved = 0
 			for item in basket:
 				saved += basket[item] * (base[item] - boosted[item])
