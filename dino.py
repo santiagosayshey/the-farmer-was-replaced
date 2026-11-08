@@ -73,7 +73,8 @@ def apple_cost():
 	return get_cost(Entities.Apple)
 
 
-def do_dino():
+def do_dino(cut):
+	# cut = share of the farm to keep cutting corners until (< 0: use config)
 	n = get_world_size()
 	total = n * n
 	clear()                  # empty farm (apples only appear on empty tiles)
@@ -81,7 +82,9 @@ def do_dino():
 	order = tables[0]
 	follow = tables[1]
 	jumps = tables[2]
-	cut_off = total * SNAKE_SHORTCUT_UNTIL
+	if cut < 0:
+		cut = SNAKE_SHORTCUT_UNTIL
+	cut_off = total * cut
 	t0 = get_time()
 
 	# lean tables on loop places (plain numbers, not (x, y) squares):

@@ -48,7 +48,7 @@ while True:
 		record(run, before, t0, True)
 		continue
 	if run == DINO:
-		stats.finish(run, token, do_dino())
+		stats.finish(run, token, do_dino(-1))
 		record(run, before, t0, True)
 		continue
 

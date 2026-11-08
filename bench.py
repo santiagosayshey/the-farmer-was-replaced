@@ -67,7 +67,7 @@ def bench_pumpkin(rounds, seconds, patience, gap):
 def bench_snake():
 	ensure_power(300)
 	token = stats.start()
-	stats.finish(DINO, token, do_dino())
+	stats.finish(DINO, token, do_dino(-1))
 	stats.report()
 
 def bench_maze():

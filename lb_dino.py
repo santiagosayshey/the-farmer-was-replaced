@@ -7,5 +7,5 @@ from dino import do_dino
 
 t0 = get_time()
 while num_items(Items.Bone) < 33488928:
-	do_dino()
+	do_dino(-1)
 quick_print("LEADERBOARD bones:", num_items(Items.Bone), "in", get_time() - t0, "s")
