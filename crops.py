@@ -41,6 +41,8 @@ def tile(mode):
 		return True
 
 	# big crops: pumpkin, cactus, sunflower
+	# (water only when planting: drones revisit these tiles constantly, and
+	# topping up on every visit costs as much as a move)
 	crop = BIG_CROP[mode]
 	if get_entity_type() != crop:
 		if can_harvest():
@@ -50,7 +52,6 @@ def tile(mode):
 		plant(crop)
 		water()
 		return False
-	water()
 	return can_harvest()
 
 

@@ -161,39 +161,57 @@ def harvest_block(x0, y0):
 		if col < BLOCK - 1:
 			move(East)
 
+def step_to(x, y):
+	# walk inside a block (no wrapping around the farm)
+	while get_pos_x() < x:
+		move(East)
+	while get_pos_x() > x:
+		move(West)
+	while get_pos_y() < y:
+		move(North)
+	while get_pos_y() > y:
+		move(South)
+
 def do_block(x0, y0, deadline, patience):
 	goto(x0, y0)
-	stale = 0     # sweeps where everything was grown but not one pumpkin
-	while get_time() < deadline:
-		# sweep the block in a zig-zag, replanting anything dead or missing
-		ready = True
-		for col in range(BLOCK):
-			for s in range(BLOCK):
-				if not tile(PUMPKIN):
-					ready = False
-				if s < BLOCK - 1:
-					if col % 2 == 0:
-						move(North)
-					else:
-						move(South)
-			if col < BLOCK - 1:
-				move(East)
-		# 6 columns up/down/up/down/up/down ends at the bottom-right corner.
-		# If the bottom-right and bottom-left corners are the same pumpkin,
-		# the block has merged.
-		if ready:
-			if merged_here_and(West):
-				harvest()     # takes the whole 6x6 giant: best case
-				return "merged"
-			# The game merges ANY fully grown square, so a block can end up
-			# as several smaller giants that never join. Give it a couple
-			# more sweeps, then take the pieces rather than wait forever.
-			stale += 1
-			if stale >= patience:
-				harvest_block(x0, y0)
-				return "pieces"
-		goto(x0, y0)
-	return "unfinished"
+	# 1. one zig-zag over the whole block: plant / replant everything, and
+	#    write down every tile that isn't ready yet (the to-do list)
+	todo = []
+	for col in range(BLOCK):
+		for s in range(BLOCK):
+			if not tile(PUMPKIN):
+				todo.append((get_pos_x(), get_pos_y()))
+			if s < BLOCK - 1:
+				if col % 2 == 0:
+					move(North)
+				else:
+					move(South)
+		if col < BLOCK - 1:
+			move(East)
+
+	# 2. only revisit the to-do tiles (a grown, live pumpkin stays that way,
+	#    so the list only ever shrinks, apart from dead ones being replanted)
+	while len(todo) > 0:
+		if get_time() >= deadline:
+			return "unfinished"
+		left = []
+		for p in todo:
+			step_to(p[0], p[1])
+			if not tile(PUMPKIN):
+				left.append(p)
+		todo = left
+
+	# 3. all 36 grown and alive: is it one giant pumpkin? (bottom corners
+	#    have the same measure() number). If it stays in pieces, take them.
+	for attempt in range(patience + 1):
+		step_to(x0 + BLOCK - 1, y0)
+		if merged_here_and(West):
+			harvest()     # the whole 6x6 giant: best case
+			return "merged"
+		if get_time() >= deadline:
+			return "unfinished"
+	harvest_block(x0, y0)
+	return "pieces"
 
 def pumpkin_job(arg, i, k):
 	deadline = arg[0]
