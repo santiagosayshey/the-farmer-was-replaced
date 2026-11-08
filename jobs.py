@@ -1,6 +1,6 @@
 # ===== jobs: what each drone does, and running drones together =====
 
-from config import PUMPKIN, CACTUS, SUN, POLY_MODES, PUMPKIN_ROUND_SECONDS
+from config import PUMPKIN, CACTUS, SUN, POLY_MODES, PUMPKIN_ROUND_SECONDS, PUMPKIN_PATIENCE
 from util import drones, goto
 from crops import tile, poly_tile
 
@@ -161,7 +161,7 @@ def harvest_block(x0, y0):
 		if col < BLOCK - 1:
 			move(East)
 
-def do_block(x0, y0, deadline):
+def do_block(x0, y0, deadline, patience):
 	goto(x0, y0)
 	stale = 0     # sweeps where everything was grown but not one pumpkin
 	while get_time() < deadline:
@@ -189,13 +189,15 @@ def do_block(x0, y0, deadline):
 			# as several smaller giants that never join. Give it a couple
 			# more sweeps, then take the pieces rather than wait forever.
 			stale += 1
-			if stale >= 2:
+			if stale >= patience:
 				harvest_block(x0, y0)
 				return "pieces"
 		goto(x0, y0)
 	return "unfinished"
 
-def pumpkin_job(deadline, i, k):
+def pumpkin_job(arg, i, k):
+	deadline = arg[0]
+	patience = arg[1]
 	# Everyone works until the shared game clock passes the deadline, so
 	# nobody waits around for an unlucky block. Unfinished blocks simply
 	# carry on next round (the pumpkins are still in the ground).
@@ -207,7 +209,7 @@ def pumpkin_job(deadline, i, k):
 		while get_time() < deadline:
 			b = i
 			while b < blocks and get_time() < deadline:
-				counts[do_block((b % per) * BLOCK, (b // per) * BLOCK, deadline)] += 1
+				counts[do_block((b % per) * BLOCK, (b // per) * BLOCK, deadline, patience)] += 1
 				b += k
 		return counts
 	# spare drones: keep looping over the leftover strip along the top and
@@ -342,6 +344,15 @@ def harvest_sunflowers():
 
 extra = dict()   # numbers from the last round, for stats
 
+def pumpkin_round(seconds, patience):
+	# one timed pumpkin round; counts go into `extra`
+	for counts in fork_all(pumpkin_job, [get_time() + seconds, patience]):
+		for name in counts:
+			if name in extra:
+				extra[name] += counts[name]
+			else:
+				extra[name] = counts[name]
+
 def field_round(mode, wants):
 	for name in list(extra):
 		extra.pop(name)
@@ -352,12 +363,7 @@ def field_round(mode, wants):
 		return True
 
 	if mode == PUMPKIN and get_world_size() >= BLOCK:
-		for counts in fork_all(pumpkin_job, get_time() + PUMPKIN_ROUND_SECONDS):
-			for name in counts:
-				if name in extra:
-					extra[name] += counts[name]
-				else:
-					extra[name] = counts[name]
+		pumpkin_round(PUMPKIN_ROUND_SECONDS, PUMPKIN_PATIENCE)
 		return True
 
 	ok = fork(field_job, mode)
