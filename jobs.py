@@ -184,15 +184,16 @@ def do_block(x0, y0, deadline):
 		if ready:
 			if merged_here_and(West):
 				harvest()     # takes the whole 6x6 giant: best case
-				return
+				return "merged"
 			# The game merges ANY fully grown square, so a block can end up
 			# as several smaller giants that never join. Give it a couple
 			# more sweeps, then take the pieces rather than wait forever.
 			stale += 1
 			if stale >= 2:
 				harvest_block(x0, y0)
-				return
+				return "pieces"
 		goto(x0, y0)
+	return "unfinished"
 
 def pumpkin_job(deadline, i, k):
 	# Everyone works until the shared game clock passes the deadline, so
@@ -201,13 +202,14 @@ def pumpkin_job(deadline, i, k):
 	n = get_world_size()
 	per = n // BLOCK
 	blocks = per * per
+	counts = {"merged": 0, "pieces": 0, "unfinished": 0, "strip": 0}
 	if i < blocks:
 		while get_time() < deadline:
 			b = i
 			while b < blocks and get_time() < deadline:
-				do_block((b % per) * BLOCK, (b // per) * BLOCK, deadline)
+				counts[do_block((b % per) * BLOCK, (b // per) * BLOCK, deadline)] += 1
 				b += k
-		return True
+		return counts
 	# spare drones: keep looping over the leftover strip along the top and
 	# right edges
 	spares = k - blocks
@@ -228,7 +230,8 @@ def pumpkin_job(deadline, i, k):
 			goto(p[0], p[1])
 			if tile(PUMPKIN):
 				harvest()
-	return True
+				counts["strip"] += 1
+	return counts
 
 
 def harvest_job(points):
@@ -337,13 +340,24 @@ def harvest_sunflowers():
 
 # ---------- one round of farming ----------
 
+extra = dict()   # numbers from the last round, for stats
+
 def field_round(mode, wants):
+	for name in list(extra):
+		extra.pop(name)
+
 	if mode in POLY_MODES and num_unlocked(Unlocks.Polyculture) > 0:
 		fork_poly(mode, wants)
+		extra["requests open"] = len(wants)
 		return True
 
 	if mode == PUMPKIN and get_world_size() >= BLOCK:
-		fork(pumpkin_job, get_time() + PUMPKIN_ROUND_SECONDS)
+		for counts in fork_all(pumpkin_job, get_time() + PUMPKIN_ROUND_SECONDS):
+			for name in counts:
+				if name in extra:
+					extra[name] += counts[name]
+				else:
+					extra[name] = counts[name]
 		return True
 
 	ok = fork(field_job, mode)
@@ -352,8 +366,11 @@ def field_round(mode, wants):
 	if mode == PUMPKIN:
 		harvest()
 	elif mode == CACTUS:
+		t = get_time()
 		fork(sort_job, East)
 		fork(sort_job, North)
+		extra["sort seconds"] = get_time() - t
+		extra["fields"] = 1
 		harvest()
 	elif mode == SUN:
 		harvest_sunflowers()

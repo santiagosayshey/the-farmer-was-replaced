@@ -183,12 +183,13 @@ def walk(walls, goal, zones, k, chasing):
 # ---------- at the treasure ----------
 
 def collect(stop_sub, cost):
+	# returns 1 if the treasure was grabbed and jumped somewhere new
 	if get_entity_type() != Entities.Treasure:
-		return
+		return 0
 	sub = num_items(Items.Weird_Substance)
 	if sub < cost or sub - cost < stop_sub:
 		harvest()    # spent enough: finish the maze
-		return
+		return 0
 	t = here()
 	# use substance; the treasure should jump somewhere else.
 	# It can land on the same square by chance, so try twice. If it still
@@ -196,38 +197,43 @@ def collect(stop_sub, cost):
 	for attempt in range(2):
 		if num_items(Items.Weird_Substance) < cost:
 			harvest()
-			return
+			return 0
 		use_item(Items.Weird_Substance, cost)
 		start = get_tick_count()
 		while measure() == t and get_tick_count() - start < 2000:
 			pass
 		if measure() != t:
-			return
+			return 1
 	if get_entity_type() == Entities.Treasure:
 		harvest()
+	return 0
 
 
 # ---------- what every drone runs ----------
 
 def worker(zones, k, stop_sub, cost, walls):
 	home = zone_home(zones[0], k)
+	grabs = 0
 	while not maze_over():
 		t = measure()
 		if t == None:      # someone finished the maze a moment ago
 			return
 		if zone_of(t, k) in zones:
 			if here() == t:
-				collect(stop_sub, cost)
+				grabs += collect(stop_sub, cost)
 			else:
 				walk(walls, t, zones, k, True)
 		elif here() != home:
 			walk(walls, home, zones, k, False)
+	return grabs
 
 
 def do_mazes():
+	# returns numbers for stats
 	cost = maze_cost()
 	if num_items(Items.Weird_Substance) < cost:
-		return
+		return dict()
+	t0 = get_time()
 	make_maze(cost)
 
 	k = drones()
@@ -239,15 +245,23 @@ def do_mazes():
 
 	# map the maze together, then give everyone a copy
 	walls = map_maze()
+	t_map = get_time()
 
 	# one zone per helper; any zone whose helper didn't spawn is mine
 	mine = []
+	helpers = []
 	for i in range(nzones - 1):
-		if spawn_drone(worker, [i], k, stop_sub, cost, walls) == None:
+		h = spawn_drone(worker, [i], k, stop_sub, cost, walls)
+		if h == None:
 			mine.append(i)
+		else:
+			helpers.append(h)
 	mine.insert(0, nzones - 1)
-	worker(mine, k, stop_sub, cost, walls)
+	grabs = worker(mine, k, stop_sub, cost, walls)
 
 	# wait for every helper to notice the maze is gone
+	for h in helpers:
+		grabs += wait_for(h)
 	while num_drones() > 1:
 		pass
+	return {"mazes": 1, "grabs": grabs, "map seconds": t_map - t0}

@@ -82,6 +82,7 @@ def do_dino():
 	follow = tables[1]
 	jumps = tables[2]
 	cut_off = total * SNAKE_SHORTCUT_UNTIL
+	t0 = get_time()
 
 	change_hat(Hats.Dinosaur_Hat)
 	head = (0, 0)            # clear() puts us at (0, 0)
@@ -133,6 +134,7 @@ def do_dino():
 		if eating:
 			length += 1
 
+	t_cut = get_time()
 	# Long snake: just follow the loop. No apple or tail tracking needed, so
 	# this loop is tiny (moves are cheap now; thinking would be the cost).
 	# Every lap, check we can still afford apples, so we don't loop forever.
@@ -150,7 +152,9 @@ def do_dino():
 				if idle >= total:
 					break
 
+	t_end = get_time()
 	# taking the hat off harvests the tail
 	h = other_hat()
 	if h != None:
 		change_hat(h)
+	return {"snakes": 1, "shortcut seconds": t_cut - t0, "loop seconds": t_end - t_cut}

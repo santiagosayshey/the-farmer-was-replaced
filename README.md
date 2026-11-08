@@ -12,6 +12,8 @@ Fully automated farm for *The Farmer Was Replaced*. Run `main`.
 | `mazes` | Shared-map maze reuse with drones guarding zones |
 | `dino` | Dinosaur snake on a loop that covers every square, for bones |
 | `status` | Status line in the output window + hat status lights |
+| `stats` | Times every job, counts gains and job-specific numbers, prints a summary every 20 rounds |
+| `bench` | Run one job on its own (or inside `simulate()`) and print its numbers |
 | `util` | `goto`, `water`, `drones` |
 
 ## Setup (Windows)
