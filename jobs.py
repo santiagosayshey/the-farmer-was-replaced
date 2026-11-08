@@ -113,8 +113,25 @@ def merged_here_and(d):
 		move(d)
 	return a != None and a == measure() and can_harvest()
 
+def harvest_block(x0, y0):
+	# harvest whatever giants are in the block (pieces can be any size).
+	# The first tile of each giant takes the whole thing; the rest are empty.
+	goto(x0, y0)
+	for col in range(BLOCK):
+		for s in range(BLOCK):
+			if can_harvest():
+				harvest()
+			if s < BLOCK - 1:
+				if col % 2 == 0:
+					move(North)
+				else:
+					move(South)
+		if col < BLOCK - 1:
+			move(East)
+
 def do_block(x0, y0):
 	goto(x0, y0)
+	stale = 0     # sweeps where everything was grown but not one pumpkin
 	while True:
 		# sweep the block in a zig-zag, replanting anything dead or missing
 		ready = True
@@ -132,9 +149,17 @@ def do_block(x0, y0):
 		# 6 columns up/down/up/down/up/down ends at the bottom-right corner.
 		# If the bottom-right and bottom-left corners are the same pumpkin,
 		# the block has merged.
-		if ready and merged_here_and(West):
-			harvest()     # takes the whole giant pumpkin
-			return
+		if ready:
+			if merged_here_and(West):
+				harvest()     # takes the whole 6x6 giant: best case
+				return
+			# The game merges ANY fully grown square, so a block can end up
+			# as several smaller giants that never join. Give it a couple
+			# more sweeps, then take the pieces rather than wait forever.
+			stale += 1
+			if stale >= 2:
+				harvest_block(x0, y0)
+				return
 		goto(x0, y0)
 
 def pumpkin_job(unused, i, k):
