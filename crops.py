@@ -1,6 +1,6 @@
 # ===== crops: what to do on a single tile =====
 
-from config import HAY, WOOD, FERT, CARROT, BIG_CROP
+from config import HAY, WOOD, FERT, CARROT, PUMPKIN, BIG_CROP, PUMPKIN_WATER
 from util import water
 
 
@@ -50,7 +50,8 @@ def tile(mode):
 		if get_ground_type() != Grounds.Soil:
 			till()
 		plant(crop)
-		water()
+		if mode != PUMPKIN or PUMPKIN_WATER:
+			water()
 		return False
 	return can_harvest()
 

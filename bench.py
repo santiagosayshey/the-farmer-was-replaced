@@ -15,17 +15,22 @@ from mazes import do_mazes
 from dino import do_dino
 import stats
 
-def ensure_power():
-	# Top up Power BEFORE a bench, never during one, so every test runs at the
-	# same (doubled) drone speed. Gives up after 60 rounds, just in case.
+def ensure_power(seconds):
+	# Top up Power BEFORE a bench, never during one, so every test runs at
+	# full (doubled) drone speed the whole way through. 32 drones burn about
+	# 1900 Power a minute, so aim for ~2200 per minute of benching.
+	# Gives up after 60 rounds, just in case.
+	target = POWER_MIN
+	if seconds * 37 > target:
+		target = seconds * 37
 	tries = 0
-	while num_items(Items.Power) < POWER_MIN and tries < 60:
+	while num_items(Items.Power) < target and tries < 60:
 		field_round(plan(Items.Power), dict())
 		tries += 1
 	quick_print("bench starting with Power:", num_items(Items.Power))
 
 def bench_crop(mode, rounds):
-	ensure_power()
+	ensure_power(rounds * 60)
 	wants = dict()
 	for r in range(rounds):
 		token = stats.start()
@@ -36,7 +41,7 @@ def bench_crop(mode, rounds):
 def bench_pumpkin(rounds, seconds, patience, gap):
 	# patience = extra checks to wait for a block to merge before taking pieces
 	# gap = grass strip between blocks (0 = blocks touch)
-	ensure_power()
+	ensure_power(rounds * seconds)
 	for r in range(rounds):
 		for name in list(extra):
 			extra.pop(name)
@@ -46,20 +51,20 @@ def bench_pumpkin(rounds, seconds, patience, gap):
 	stats.report()
 
 def bench_snake():
-	ensure_power()
+	ensure_power(300)
 	token = stats.start()
 	stats.finish(DINO, token, do_dino())
 	stats.report()
 
 def bench_maze():
-	ensure_power()
+	ensure_power(300)
 	token = stats.start()
 	stats.finish(MAZE, token, do_mazes())
 	stats.report()
 
 # ---- pick one, then press play on this window ----
-bench_pumpkin(3, 60, 2, 1)   # gap experiment: 1-tile grass strip between blocks
-# bench_pumpkin(3, 60, 2, 0)   # no gaps (the main farm's current settings)
+bench_pumpkin(3, 60, 2, 0)   # new pumpkin code, full Power, no gaps
+# bench_pumpkin(3, 60, 2, 1)   # with 1-tile grass gaps between blocks
 # bench_crop(PUMPKIN, 3)
 # bench_crop(CACTUS, 1)
 # bench_snake()

@@ -120,7 +120,7 @@ GOALS = [Unlocks.Leaderboard, Unlocks.Top_Hat]
 # farm toward these, but leave the button for you to press
 MANUAL = [Unlocks.The_Farmers_Remains]
 
-POWER_MIN = 1500   # top up sunflowers below this (16 drones burn it fast)
+POWER_MIN = 3000   # top up sunflowers below this (32 drones burn ~1900 a minute)
 FIELD_BUFFER = 1.5 # need this many fields' worth of seed cost before planting
 MAZE_CYCLES = 300  # treasure grabs per maze before finishing it (max 300)
 STUCK_LIMIT = 40   # give up on a big crop after this many rounds
@@ -129,4 +129,5 @@ REPLAN_EVERY = 5   # rounds between planner decisions (planning takes ~a second)
 PUMPKIN_ROUND_SECONDS = 60  # each pumpkin round runs this long (tested: 60s beats 20s)
 PUMPKIN_PATIENCE = 2  # extra sweeps to wait for a block to merge before taking the pieces
 PUMPKIN_GAP = 0    # grass strip between pumpkin blocks (stops giants forming across blocks)
+PUMPKIN_WATER = True  # water pumpkins when planting (8x faster growth, but costs a tick-heavy action per tile)
 STATS_EVERY = 20   # print a stats summary every this many rounds

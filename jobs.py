@@ -174,11 +174,15 @@ def step_to(x, y):
 
 def do_block(x0, y0, deadline, patience):
 	goto(x0, y0)
-	# 1. one zig-zag over the whole block: plant / replant everything, and
-	#    write down every tile that isn't ready yet (the to-do list)
+	# 1. one zig-zag over the whole block. Harvest anything that's grown
+	#    (pieces left over from last time), plant / replant everything, and
+	#    write down every tile that isn't ready yet (the to-do list).
+	#    Harvesting here means pieces never need a separate pass.
 	todo = []
 	for col in range(BLOCK):
 		for s in range(BLOCK):
+			if get_entity_type() == Entities.Pumpkin and can_harvest():
+				harvest()
 			if not tile(PUMPKIN):
 				todo.append((get_pos_x(), get_pos_y()))
 			if s < BLOCK - 1:
@@ -202,7 +206,8 @@ def do_block(x0, y0, deadline, patience):
 		todo = left
 
 	# 3. all 36 grown and alive: is it one giant pumpkin? (bottom corners
-	#    have the same measure() number). If it stays in pieces, take them.
+	#    have the same measure() number). If it stays in pieces, leave them:
+	#    the next zig-zag harvests them on its way past.
 	for attempt in range(patience + 1):
 		step_to(x0 + BLOCK - 1, y0)
 		if merged_here_and(West):
@@ -210,7 +215,6 @@ def do_block(x0, y0, deadline, patience):
 			return "merged"
 		if get_time() >= deadline:
 			return "unfinished"
-	harvest_block(x0, y0)
 	return "pieces"
 
 def pumpkin_job(arg, i, k):
