@@ -99,6 +99,70 @@ def sort_job(dir, i, k):
 		line += k
 	return True
 
+# ---------- pumpkins in 6x6 blocks ----------
+# A 6x6 pumpkin already pays the most per tile (6), so instead of waiting
+# for the WHOLE farm to merge, each drone owns some 6x6 blocks, keeps them
+# replanted, and harvests each block the moment it has merged.
+
+BLOCK = 6
+
+def merged_here_and(d):
+	# same "mysterious number" from measure() = same giant pumpkin
+	a = measure()
+	for s in range(BLOCK - 1):
+		move(d)
+	return a != None and a == measure() and can_harvest()
+
+def do_block(x0, y0):
+	goto(x0, y0)
+	while True:
+		# sweep the block in a zig-zag, replanting anything dead or missing
+		ready = True
+		for col in range(BLOCK):
+			for s in range(BLOCK):
+				if not tile(PUMPKIN):
+					ready = False
+				if s < BLOCK - 1:
+					if col % 2 == 0:
+						move(North)
+					else:
+						move(South)
+			if col < BLOCK - 1:
+				move(East)
+		# 6 columns up/down/up/down/up/down ends at the bottom-right corner.
+		# If the bottom-right and bottom-left corners are the same pumpkin,
+		# the block has merged.
+		if ready and merged_here_and(West):
+			harvest()     # takes the whole giant pumpkin
+			return
+		goto(x0, y0)
+
+def pumpkin_job(unused, i, k):
+	n = get_world_size()
+	per = n // BLOCK
+	blocks = per * per
+	if i < blocks:
+		b = i
+		while b < blocks:
+			do_block((b % per) * BLOCK, (b // per) * BLOCK)
+			b += k
+		return True
+	# spare drones: the leftover strip along the top and right edges
+	spares = k - blocks
+	j = i - blocks
+	edge = per * BLOCK
+	count = 0
+	for x in range(n):
+		for y in range(n):
+			if x >= edge or y >= edge:
+				if count % spares == j:
+					goto(x, y)
+					if tile(PUMPKIN) and can_harvest():
+						harvest()
+				count += 1
+	return True
+
+
 def harvest_job(points):
 	for p in points:
 		goto(p[0], p[1])
@@ -208,6 +272,10 @@ def harvest_sunflowers():
 def field_round(mode, wants):
 	if mode in POLY_MODES and num_unlocked(Unlocks.Polyculture) > 0:
 		fork_poly(mode, wants)
+		return True
+
+	if mode == PUMPKIN and get_world_size() >= BLOCK:
+		fork(pumpkin_job, 0)   # every block harvested once
 		return True
 
 	ok = fork(field_job, mode)
